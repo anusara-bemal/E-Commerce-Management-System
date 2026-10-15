@@ -173,6 +173,3 @@ int main()
  
 return 0;
 }
-//hi
-//puka sududa
-//ukahan
