@@ -10,11 +10,12 @@ struct costomer{
     char address[50];
 };
 
-void login()
+int login(char logginuser[])
 {
  struct costomer d;
  char intuser[30];
  char intpass[10];
+
 
  printf("==================================================\nCUSTOMER LOGIN\n==================================================\n");
 
@@ -30,7 +31,7 @@ void login()
  
  if (fp == NULL) {
         printf("Can't Open File\n");
-        return;
+        return 0;
     }
 
     char line[200];
@@ -61,6 +62,7 @@ while (fgets(line,sizeof(line),fp))
 
    if(strcmp(f_user, intuser)==0 && strcmp(f_pass, intpass)==0)
     {
+        strcpy(logginuser,intuser);
         
         found=1;
         break;
@@ -77,6 +79,12 @@ while (fgets(line,sizeof(line),fp))
 
 fclose(fp);
 
+if (found == 1)
+{
+    return 1;
+}
+
+return 0;
  
 }
 
@@ -89,7 +97,7 @@ int validuser(char username[])
         return 0;
     }
 
-    FILE *fp = open("coustemer.txt" , "r");
+    FILE *fp = fopen("coustemer.txt" , "r");
     if(fp == NULL)
     {
         return 1;
@@ -140,6 +148,12 @@ void registerCustomer()
  printf("Email : ");
  fgets(d.email,sizeof(d.email), stdin);
  d.email[strcspn(d.email,"\n")]=0;
+ //email valid
+ if(strchr(d.email,'@')== NULL)
+ {
+    printf("Invalid email\n");
+    return ;
+ }
 
  printf("Phone Number : ");
  fgets( d.number,sizeof( d.number),stdin);
@@ -164,12 +178,94 @@ void registerCustomer()
 }
 
 
-
-int main()
+//viwe profile
+void viewprofile(char logginuser[])
 {
- login(); 
- registerCustomer();
+    FILE *fp;
+    char line[200];
+    char *p;
+    char name[50];
+
+    fp = fopen("coustemer.txt", "r");
+
+    if (fp == NULL)
+    {
+        printf("Can't open file\n");
+        return;
+    }
+
+    while (fgets(line, sizeof(line), fp))
+    {
+        line[strcspn(line, "\n")] = 0;
+
+        // Customer name
+        p = strtok(line, ",");
+        if (p == NULL)
+            continue;
+
+        strcpy(name, p);
+
+        // Username
+        p = strtok(NULL, ",");
+        if (p == NULL)
+            continue;
+
+        // Check logged-in username
+        if (strcmp(p, logginuser) == 0)
+        {
+            printf("\n========== MY PROFILE ==========\n");
+            printf("Customer Name : %s\n", name);
+            printf("User Name     : %s\n", p);
+
+            // Skip password
+            p = strtok(NULL, ",");
+            if (p == NULL)
+                break;
+
+            // Email
+            p = strtok(NULL, ",");
+            if (p == NULL)
+                break;
+            printf("Email         : %s\n", p);
+
+            // Phone number
+            p = strtok(NULL, ",");
+            if (p == NULL)
+                break;
+            printf("Phone Number  : %s\n", p);
+
+            // Address
+            p = strtok(NULL, ",");
+            if (p == NULL)
+                break;
+            printf("Address       : %s\n", p);
+
+            fclose(fp);
+            return;
+        }
+    }
+
+    fclose(fp);
+    printf("Profile not found!\n");
+}
+
+
+
+
+   int main()
+{
+    char loggedinuser[30];
+
+    if (login(loggedinuser) == 1)
+    {
+        viewprofile(loggedinuser);
+    }
+
+    return 0;
+}
+   
+
+ 
    
  
-return 0;
-}
+
