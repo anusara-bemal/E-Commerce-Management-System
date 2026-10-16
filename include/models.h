@@ -7,6 +7,9 @@
 #define MAX_PASSWORD 30
 #define MAX_CART_ITEMS 50
 
+#define DELIMITER "|"
+#define DELIMITER_CHAR '|'
+
 #define USERS_FILE "data/users.txt"
 #define PRODUCTS_FILE "data/products.txt"
 #define ORDERS_FILE "data/orders.txt"
