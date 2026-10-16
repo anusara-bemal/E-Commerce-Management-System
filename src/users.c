@@ -139,9 +139,15 @@ void registerCustomer()
         return;
     }
 
+    
+
+
     d.id = getNextUserId();
     d.role = ROLE_CUSTOMER;
     d.isActive = 1;
+
+
+
 
     FILE *fp = fopen(USERS_FILE,"a");
     if (fp == NULL) {

@@ -32,6 +32,8 @@ typedef struct {
     char password[MAX_PASSWORD];
     char email[MAX_EMAIL];
     UserRole role;
+//mobile number
+//address
     int isActive; 
 } User;
 
@@ -60,6 +62,7 @@ typedef struct {
     float totalAmount;
     OrderStatus status;
 } Order;
+
 
 #endif
 //hello

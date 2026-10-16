@@ -4,8 +4,9 @@
 #include "models.h"
 
 // Public functions
-void login();
+int login(char logginuser[]);
 void registerCustomer();
 int validuser(char username[]);
+
 
 #endif
