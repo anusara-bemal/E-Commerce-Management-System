@@ -3,7 +3,7 @@
 #include "models.h"
 #include "users.h"
 
-// ===== PRIVATE HELPER - මේක උඩම තියෙන්න ඕන =====
+// id eka auto hadanawa
 static int getNextUserId() {
     FILE *fp = fopen(USERS_FILE, "r");
     if (fp == NULL) return 1;
@@ -20,14 +20,14 @@ static int getNextUserId() {
     return lastId + 1;
 }
 
-void login()
+int login(char logginuser[])
 {
     char intuser[MAX_USERNAME];
     char intpass[MAX_PASSWORD];
 
-    printf("========================================\n");
-    printf(" CUSTOMER LOGIN\n");
-    printf("========================================\n");
+    printf("==================================================\n");
+    printf("CUSTOMER LOGIN\n");
+    printf("==================================================\n");
 
     printf("Enter User Name : ");
     fgets(intuser, sizeof(intuser), stdin);
@@ -40,7 +40,7 @@ void login()
     FILE *fp = fopen(USERS_FILE, "r");
     if (fp == NULL) {
         printf("Can't Open File: %s\n", USERS_FILE);
-        return;
+        return 0;
     }
 
     char line[300];
@@ -55,25 +55,30 @@ void login()
         char f_user[MAX_USERNAME];
         char f_pass[MAX_PASSWORD];
 
-        p = strtok(NULL, "|");
+        p = strtok(NULL, "|"); // username
         if(p==NULL) continue;
         strcpy(f_user, p);
 
-        p = strtok(NULL, "|");
+        p = strtok(NULL, "|"); // password
         if(p==NULL) continue;
         strcpy(f_pass, p);
 
         if(strcmp(f_user, intuser)==0 && strcmp(f_pass, intpass)==0)
         {
+            strcpy(logginuser, intuser); // login una kenata save karanawa
             found=1;
             break;
         }
     }
-
-    if(found == 0) printf("\nYou have no Account Please Register.\n");
-    else printf("\nlogin successfully!\n");
-
     fclose(fp);
+
+    if(found == 0){
+        printf("\nYou have no Account Please Register.\n");
+        return 0;
+    } else {
+        printf("\nlogin successfully!\n");
+        return 1;
+    }
 }
 
 int validuser(char username[])
@@ -111,9 +116,9 @@ void registerCustomer()
 {
     User d;
 
-    printf("========================================\n");
-    printf(" CUSTOMER REGISTRATION\n");
-    printf("========================================\n");
+    printf("==================================================\n");
+    printf("CUSTOMER REGISTRATION\n");
+    printf("==================================================\n");
 
     printf("User Name : ");
     fgets(d.username,sizeof(d.username),stdin);
@@ -127,6 +132,12 @@ void registerCustomer()
     printf("Email : ");
     fgets(d.email,sizeof(d.email), stdin);
     d.email[strcspn(d.email,"\n")]=0;
+
+    if(strchr(d.email,'@')== NULL)
+    {
+        printf("Invalid email\n");
+        return;
+    }
 
     d.id = getNextUserId();
     d.role = ROLE_CUSTOMER;
@@ -143,6 +154,3 @@ void registerCustomer()
 
     printf("\n%s Customer Registration Successfully.... ID = %d\n", d.username, d.id);
 }
-
-
-//user id eka imcrement unata same user id eka txt eke save wenne
