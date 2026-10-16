@@ -62,10 +62,12 @@ int login(char logginuser[])
         p = strtok(NULL, "|"); // password
         if(p==NULL) continue;
         strcpy(f_pass, p);
+         
 
+        // save logging use
         if(strcmp(f_user, intuser)==0 && strcmp(f_pass, intpass)==0)
         {
-            strcpy(logginuser, intuser); // login una kenata save karanawa
+            strcpy(logginuser, intuser); 
             found=1;
             break;
         }
@@ -139,15 +141,26 @@ void registerCustomer()
         return;
     }
 
+    //mobile number and address
     
-
+    printf("Phone Number : ");
+    fgets( d.tpNumber,sizeof( d.tpNumber),stdin);
+    d.tpNumber[strcspn(d.tpNumber, "\n")] = 0;
+    //check phone number valid
+   if (strlen(d.tpNumber) != 10)
+   {
+     printf("Invalid Phone Number! Enter 10 digits.\n");
+     return;
+    }
+ 
+   //address
+   printf("Address : ");
+   fgets( d.address,sizeof( d.address),stdin);
+   d.address[strcspn( d.address,"\n")]=0;
 
     d.id = getNextUserId();
     d.role = ROLE_CUSTOMER;
     d.isActive = 1;
-
-
-
 
     FILE *fp = fopen(USERS_FILE,"a");
     if (fp == NULL) {
@@ -155,8 +168,140 @@ void registerCustomer()
         return;
     }
 
-    fprintf(fp, "%d|%s|%s|%s|%d|%d\n", d.id, d.username, d.password, d.email, d.role, d.isActive);
+    fprintf(fp, "%d|%s|%s|%s|%s|%s|%d|%d\n",
+        d.id, d.username, d.password, d.email,
+        d.tpNumber, d.address, d.role, d.isActive);
     fclose(fp);
 
     printf("\n%s Customer Registration Successfully.... ID = %d\n", d.username, d.id);
+}
+
+
+//update profile
+void updateprofile(char logginuser[])
+{
+    FILE *fp=fopen(USERS_FILE,"r");
+
+    if(fp==NULL)
+    {
+        printf("Can't Open File\n");
+        return;
+    }
+
+    FILE *temp=fopen("temp.txt","w");
+
+    if(temp==NULL)
+    {
+        fclose(fp);
+        printf("Cant't Create Temporary File\n");
+        return;
+    }
+
+    char line[500];
+    int found=0;
+
+    while(fgets(line,sizeof(line),fp))
+    {
+        line[strcspn(line,"\n")]=0;
+
+        char copy[500];
+        strcpy(copy,line);
+
+        char *id=strtok(copy, "|");
+        char *username=strtok(NULL,"|");
+        char *password = strtok(NULL, "|");
+        char *email = strtok(NULL, "|");
+        char *phone = strtok(NULL, "|");
+        char *address = strtok(NULL, "|");
+        char *role = strtok(NULL, "|");
+        char *active = strtok(NULL, "|");
+
+        if(username != NULL && strcmp(username, logginuser)==0 && password != NULL &&email != NULL && phone != NULL && address !=NULL && role != NULL && active != NULL)
+        {
+            User d;
+            strcpy(d.username, username);
+            strcpy(d.password, password);
+            strcpy(d.email, email);
+            strcpy(d.tpNumber, phone);
+            strcpy(d.address, address);
+
+            printf("New Email :");
+            fgets(d.email,sizeof(d.email),stdin);
+            d.email[strcspn(d.email, "\n")]=0;
+
+            if(strchr(d.email, '@')==NULL)
+            {
+                 printf("Invalid Email\n");
+
+                fclose(fp);
+                fclose(temp);
+                remove("temp.txt");
+                return;
+            }
+
+            printf("New Phone Number: ");
+            fgets(d.tpNumber, sizeof(d.tpNumber), stdin);
+            d.tpNumber[strcspn(d.tpNumber, "\n")] = 0;
+
+            if (strlen(d.tpNumber) != 10)
+            {
+                printf("Phone Number Must Have 10 Digits\n");
+
+                fclose(fp);
+                fclose(temp);
+                remove("temp.txt");
+                return;
+            }
+            printf("New Address: ");
+            fgets(d.address, sizeof(d.address), stdin);
+            d.address[strcspn(d.address, "\n")] = 0;
+
+            fprintf(temp, "%s|%s|%s|%s|%s|%s|%s|%s\n",
+                    id, d.username, d.password, d.email,
+                    d.tpNumber, d.address, role, active);
+
+            found = 1;
+        }
+        else
+        {
+            fprintf(temp, "%s\n", line);
+        }
+        }
+
+        fclose(fp);
+        fclose(temp);
+
+
+        if (found)
+    {
+        if (remove(USERS_FILE) != 0)
+        {
+            printf("Error Removing Old File\n");
+            return;
+        }
+
+        if (rename("temp.txt", USERS_FILE) != 0)
+        {
+            printf("Error Updating Profile File\n");
+            return;
+        }
+
+        printf("Profile Updated Successfully!\n");
+    }
+    else
+    {
+        remove("temp.txt");
+        printf("User Not Found!\n");
+    }
+}
+
+
+
+//logout
+void logout(char logginuser[])
+{
+    
+    strcpy(logginuser,"");
+    printf("Logout Successfully\n");
+
 }
