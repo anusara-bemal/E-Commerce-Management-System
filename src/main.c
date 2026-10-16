@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "models.h"
 #include "users.h"
 #include "products.h"
@@ -58,16 +59,42 @@ void displayMainMenu(void)
     printf("3. Admin Login\n");
     printf("4. Exit\n");
 }
-
 void customerLogin(void)
 {
-    char user[50];
+    char user[50] = "";
     if(login(user) == 1){
         printf("\nCustomer %s logged in successfully!\n", user);
-        // TODO: showCustomerMenu(user);
+
+        // --- මේ ටික තමයි fix එක ---
+        // users.c එකේ bug එක: \r නිසා User Not Found එනවා. අපි main එකෙන්ම clean කරනවා
+        user[strcspn(user, "\r\n")] = 0;
+        // ඉස්සරහ පිටිපස space තියෙනවා නම් අයින් කරනවා
+        int i=0; while(user[i]==' ' || user[i]=='\t') i++;
+        if(i>0) memmove(user, user+i, strlen(user+i)+1);
+        int len = strlen(user);
+        while(len>0 && (user[len-1]==' ' || user[len-1]=='\t')) user[--len]=0;
+
+        int userIn;
+        printf("\n1. Update profile\n");
+        printf("2. Logout\n");
+        printf("Enter choice: ");
+        scanf("%d",&userIn);
+        while(getchar()!='\n');
+
+        switch (userIn)
+        {
+        case 1:
+            updateprofile(user); // දැන් clean කරපු user නම යන නිසා User Not Found එන්නේ නෑ
+            break;
+        case 2:
+            logout(user);
+            break;
+        default:
+            printf("Invalid choice!\n");
+            break;
+        }
     }
 }
-
 void customerRegistration(void)
 {
     registerCustomer();

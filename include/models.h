@@ -5,6 +5,8 @@
 #define MAX_EMAIL 50
 #define MAX_PRODUCT_NAME 100
 #define MAX_PASSWORD 30
+#define MAX_tpNumber 11
+#define MAX_Adress 300
 #define MAX_CART_ITEMS 50
 
 #define DELIMITER "|"
@@ -31,11 +33,13 @@ typedef struct {
     char username[MAX_USERNAME];
     char password[MAX_PASSWORD];
     char email[MAX_EMAIL];
+    char tpNumber[MAX_tpNumber];
+    char address[MAX_Adress];
     UserRole role;
-//mobile number
-//address
     int isActive; 
 } User;
+
+
 
 typedef struct {
     int id;
@@ -62,7 +66,6 @@ typedef struct {
     float totalAmount;
     OrderStatus status;
 } Order;
-
 
 #endif
 //hello

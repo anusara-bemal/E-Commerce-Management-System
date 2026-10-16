@@ -177,19 +177,20 @@ void registerCustomer()
 }
 
 
-//update profile
+//update profile - FIXED
 void updateprofile(char logginuser[])
 {
-    FILE *fp=fopen(USERS_FILE,"r");
+    // logginuser එක clean කරනවා
+    logginuser[strcspn(logginuser, "\r\n")] = 0;
 
+    FILE *fp=fopen(USERS_FILE,"r");
     if(fp==NULL)
     {
-        printf("Can't Open File\n");
+        printf("Can't Open File %s\n", USERS_FILE);
         return;
     }
 
     FILE *temp=fopen("temp.txt","w");
-
     if(temp==NULL)
     {
         fclose(fp);
@@ -202,7 +203,7 @@ void updateprofile(char logginuser[])
 
     while(fgets(line,sizeof(line),fp))
     {
-        line[strcspn(line,"\n")]=0;
+        line[strcspn(line,"\r\n")]=0; // \n විතරක් නෙවෙයි \r\n දෙකම අයින් කරනවා
 
         char copy[500];
         strcpy(copy,line);
@@ -216,23 +217,26 @@ void updateprofile(char logginuser[])
         char *role = strtok(NULL, "|");
         char *active = strtok(NULL, "|");
 
-        if(username != NULL && strcmp(username, logginuser)==0 && password != NULL &&email != NULL && phone != NULL && address !=NULL && role != NULL && active != NULL)
+        if(username!= NULL) username[strcspn(username, "\r\n")] = 0;
+
+        // password,email,phone... NULL check එකෙන් found වෙන්න බැරි වෙනවා, ඒ නිසා username එක විතරක් check කරනවා
+        if(username!= NULL && strcmp(username, logginuser)==0)
         {
             User d;
             strcpy(d.username, username);
-            strcpy(d.password, password);
-            strcpy(d.email, email);
-            strcpy(d.tpNumber, phone);
-            strcpy(d.address, address);
+            strcpy(d.password, password? password : "");
+            strcpy(d.email, email? email : "");
+            strcpy(d.tpNumber, phone? phone : "");
+            strcpy(d.address, address? address : "");
 
+            printf("Current Email: %s\n", d.email);
             printf("New Email :");
             fgets(d.email,sizeof(d.email),stdin);
-            d.email[strcspn(d.email, "\n")]=0;
+            d.email[strcspn(d.email, "\r\n")]=0;
 
             if(strchr(d.email, '@')==NULL)
             {
                  printf("Invalid Email\n");
-
                 fclose(fp);
                 fclose(temp);
                 remove("temp.txt");
@@ -241,12 +245,11 @@ void updateprofile(char logginuser[])
 
             printf("New Phone Number: ");
             fgets(d.tpNumber, sizeof(d.tpNumber), stdin);
-            d.tpNumber[strcspn(d.tpNumber, "\n")] = 0;
+            d.tpNumber[strcspn(d.tpNumber, "\r\n")] = 0;
 
-            if (strlen(d.tpNumber) != 10)
+            if (strlen(d.tpNumber)!= 10)
             {
                 printf("Phone Number Must Have 10 Digits\n");
-
                 fclose(fp);
                 fclose(temp);
                 remove("temp.txt");
@@ -254,11 +257,11 @@ void updateprofile(char logginuser[])
             }
             printf("New Address: ");
             fgets(d.address, sizeof(d.address), stdin);
-            d.address[strcspn(d.address, "\n")] = 0;
+            d.address[strcspn(d.address, "\r\n")] = 0;
 
             fprintf(temp, "%s|%s|%s|%s|%s|%s|%s|%s\n",
-                    id, d.username, d.password, d.email,
-                    d.tpNumber, d.address, role, active);
+                    id? id : "0", d.username, d.password, d.email,
+                    d.tpNumber, d.address, role? role : "0", active? active : "1");
 
             found = 1;
         }
@@ -266,35 +269,23 @@ void updateprofile(char logginuser[])
         {
             fprintf(temp, "%s\n", line);
         }
-        }
+    }
 
-        fclose(fp);
-        fclose(temp);
+    fclose(fp);
+    fclose(temp);
 
-
-        if (found)
+    if (found)
     {
-        if (remove(USERS_FILE) != 0)
-        {
-            printf("Error Removing Old File\n");
-            return;
-        }
-
-        if (rename("temp.txt", USERS_FILE) != 0)
-        {
-            printf("Error Updating Profile File\n");
-            return;
-        }
-
+        remove(USERS_FILE);
+        rename("temp.txt", USERS_FILE);
         printf("Profile Updated Successfully!\n");
     }
     else
     {
         remove("temp.txt");
-        printf("User Not Found!\n");
+        printf("User Not Found! [%s]\n", logginuser);
     }
 }
-
 
 
 //logout
