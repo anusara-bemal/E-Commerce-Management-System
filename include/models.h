@@ -5,7 +5,7 @@
 #define MAX_EMAIL 50
 #define MAX_PRODUCT_NAME 100
 #define MAX_PASSWORD 30
-#define MAX_tpNumber 11
+#define MAX_tpNumber 20
 #define MAX_Adress 300
 #define MAX_CART_ITEMS 50
 

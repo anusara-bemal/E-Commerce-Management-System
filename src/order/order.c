@@ -105,7 +105,7 @@ void myOrders(char username[]) {
 }
 
 
-//updatte order status (for to subat aiya)
+//updatte order status (for to subat aiyata)
 void updateOrderStatus() {
     printf("\n===== ALL ORDERS =====\n");
     printf("%-6s %-15s %-8s %-9s\n", "ID", "CUSTOMER", "TOTAL", "STATUS");
