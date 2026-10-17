@@ -63,7 +63,7 @@ void placeOrder(char username[], char phoneNumber[], char address[],
 
 
 
-    printf("\n[OK] Order placed!\n");
+    printf("\nOrder placed!\n");
     printf("Order ID   = %d\n", newId);
     printf("Total      = %.2f\n", totalAmount);
     printf("Status     = PENDING\n");
