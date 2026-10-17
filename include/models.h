@@ -51,6 +51,9 @@ typedef struct {
 
 typedef struct {
     int productId;
+    char productName[MAX_PRODUCT_NAME];
+    float unitPrice;
+    float subtotal;
     int quantity;
 } CartItem;
 
@@ -62,6 +65,11 @@ typedef struct {
 
 typedef struct {
     int orderId;
+    char customerName[MAX_USERNAME];
+    char phoneNumber[MAX_tpNumber];
+    char address[MAX_Adress];
+    int itemcount;
+    int discountAmount;
     int userId;
     float totalAmount;
     OrderStatus status;
