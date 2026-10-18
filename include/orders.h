@@ -1,5 +1,8 @@
 #ifndef ORDERS_H
 #define ORDERS_H
-void orderMenu();
-void viewOrders();
+
+void placeOrder(char* username);
+void viewOrders(char* username);
+void viewOrdersAdmin();
+
 #endif

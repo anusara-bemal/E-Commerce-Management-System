@@ -7,106 +7,197 @@
 #include "cart.h"
 #include "orders.h"
 #include "admin.h"
+#include "ui.h"
+#include "cart.h"
+#include "orders.h"
 
-void displayMainMenu(void);
 void customerLogin(void);
 void customerRegistration(void);
 void adminLogin(void);
+void showInstructions(void);
+void showAboutUs(void);
 
 int main(void)
 {
     int choice;
+    showSplash();
+    printf("\nPress Enter to continue...");
+    getchar();
+
     do
     {
         displayMainMenu();
         printf("\nEnter your choice: ");
-        if (scanf("%d", &choice)!= 1)
+        if (scanf("%d", &choice) != 1)
         {
-            printf("\nInvalid input! Please enter a number.\n");
-            while (getchar()!= '\n');
+            printf("\n%sInvalid input! Please enter a number.%s\n", YELLOW, RESET);
+            while (getchar() != '\n');
             continue;
         }
-        while (getchar()!= '\n'); // scanf \n clear
+        while (getchar() != '\n');
 
         switch (choice)
         {
-            case 1:
-                customerLogin();
-                break;
-            case 2:
-                customerRegistration();
-                break;
-            case 3:
-                adminLogin();
-                break;
-            case 4:
-                printf("\nThank you for using E-Commerce Management System!\n");
-                break;
-            default:
-                printf("\nInvalid choice! Please select 1-4.\n");
+        case 1:
+            customerLogin();
+            break;
+        case 2:
+            customerRegistration();
+            break;
+        case 3:
+            viewProducts(); // Guest view
+            printf("\nPress Enter...");
+            getchar();
+            break;
+        case 4:
+            showInstructions();
+            break;
+        case 5:
+            showAboutUs();
+            break;
+        case 99:
+            adminLogin();
+            break;
+        case 0:
+            clearScreen();
+            printf("\n%sThank you for using E-Commerce Management System!%s\n", GREEN, RESET);
+            break;
+        default:
+            printf("\n%sInvalid choice! Please select 0-5, 99%s\n", YELLOW, RESET);
+            printf("Press Enter...");
+            getchar();
         }
-    } while (choice!= 4);
+    } while (choice != 0);
     return 0;
 }
 
-void displayMainMenu(void)
-{
-    printf("\n========================================\n");
-    printf(" E-COMMERCE MANAGEMENT SYSTEM\n");
-    printf("========================================\n");
-    printf("1. Customer Login\n");
-    printf("2. Customer Registration\n");
-    printf("3. Admin Login\n");
-    printf("4. Exit\n");
-}
 void customerLogin(void)
 {
     char user[50] = "";
-    if(login(user) == 1){
-        printf("\nCustomer %s logged in successfully!\n", user);
-
-        // --- මේ ටික තමයි fix එක ---
-        // users.c එකේ bug එක: \r නිසා User Not Found එනවා. අපි main එකෙන්ම clean කරනවා
+    if (login(user) == 1)
+    {
+        // Trim username
         user[strcspn(user, "\r\n")] = 0;
-        // ඉස්සරහ පිටිපස space තියෙනවා නම් අයින් කරනවා
-        int i=0; while(user[i]==' ' || user[i]=='\t') i++;
-        if(i>0) memmove(user, user+i, strlen(user+i)+1);
+        int i = 0;
+        while (user[i] == ' ' || user[i] == '\t') i++;
+        if (i > 0) memmove(user, user + i, strlen(user + i) + 1);
         int len = strlen(user);
-        while(len>0 && (user[len-1]==' ' || user[len-1]=='\t')) user[--len]=0;
+        while (len > 0 && (user[len - 1] == ' ' || user[len - 1] == '\t')) user[--len] = 0;
+
+        printf("\n%sCustomer %s logged in successfully!%s\n", GREEN, user, RESET);
+        printf("Press Enter...");
+        getchar();
 
         int userIn;
-        printf("\n1. Update profile\n");
-        printf("2. Logout\n");
-        printf("Enter choice: ");
-        scanf("%d",&userIn);
-        while(getchar()!='\n');
-
-        switch (userIn)
+        while (1)
         {
-        case 1:
-            updateprofile(user); // දැන් clean කරපු user නම යන නිසා User Not Found එන්නේ නෑ
-            break;
-        case 2:
-            logout(user);
-            break;
-        default:
-            printf("Invalid choice!\n");
-            break;
+            displayCustomerMenu();
+            printf("\nEnter choice: ");
+            if (scanf("%d", &userIn) != 1) {
+                while(getchar() != '\n');
+                continue;
+            }
+            while (getchar() != '\n');
+
+            switch (userIn)
+            {
+            case 1:
+                viewProducts();
+                printf("\nPress Enter to continue...");
+                getchar();
+                break;
+            case 2:
+                searchProduct();
+                printf("\nPress Enter to continue...");
+                getchar();
+                break;
+            case 3:
+                viewCart(user); // MAIN FEATURE
+                break;
+            case 4:
+                viewOrders(user); // MAIN FEATURE
+                break;
+            case 5:
+                updateprofile(user);
+                break;
+            case 0:
+                return;
+            default:
+                printf("Invalid choice!\n");
+                printf("Press Enter...");
+                getchar();
+                break;
+            }
         }
     }
 }
+
 void customerRegistration(void)
 {
+    clearScreen();
     registerCustomer();
+    printf("\nPress Enter to go back...");
+    getchar();
 }
 
 void adminLogin(void)
 {
     char user[50];
-    printf("\n--- Admin Login ---\n");
-    if(login(user) == 1){
-        printf("Admin %s logged in\n", user);
-        // TODO: check role == ROLE_ADMIN
-        // showAdminMenu();
+    clearScreen();
+    drawHeader("ADMIN LOGIN");
+    if (login(user) == 1)
+    {
+        printf("\n%sAdmin %s logged in%s\n", GREEN, user, RESET);
+        printf("Press Enter...");
+        getchar();
+
+        int adminChoice;
+        while (1)
+        {
+            displayAdminMenu();
+            printf("\nEnter choice: ");
+            if (scanf("%d", &adminChoice) != 1) {
+                while(getchar() != '\n');
+                continue;
+            }
+            while (getchar() != '\n');
+
+            if (adminChoice == 7 || adminChoice == 0) break;
+            
+            // Call product admin functions
+            switch(adminChoice) {
+                case 1: viewProducts(); break;
+                case 2: addProduct(); break;
+                case 3: updateProduct(); break;
+                case 4: deleteProduct(); break;
+                case 5: viewOrdersAdmin(); break;
+                default: printf("Module %d\n", adminChoice);
+            }
+            printf("\nPress Enter...");
+            getchar();
+        }
     }
+}
+
+void showInstructions(void)
+{
+    clearScreen();
+    drawHeader("INSTRUCTIONS");
+    printf("\n  1. Use numbers to navigate\n");
+    printf("  2. Login to buy products\n");
+    printf("  3. Cart -> Orders flow\n");
+    printf("  4. Admin: 99\n");
+    printf("\nPress Enter to go back...");
+    getchar();
+}
+
+void showAboutUs(void)
+{
+    clearScreen();
+    drawHeader("ABOUT US");
+    printf("\n  Nordic E-Commerce v1.0\n");
+    printf("  Built on Ubuntu - C Project\n");
+    printf("  Main Features: Login, Products, Cart, Orders\n");
+    printf("\nPress Enter to go back...");
+    getchar();
 }

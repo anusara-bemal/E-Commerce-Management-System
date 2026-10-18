@@ -1,4 +1,9 @@
 #ifndef CART_H
 #define CART_H
-void showCartMenu(); // නම විතරක් දාන්න
+
+void addToCart(char* username, int productId, int quantity);
+void viewCart(char* username);
+void removeFromCart(char* username, int productId);
+void clearCart(char* username);
+
 #endif

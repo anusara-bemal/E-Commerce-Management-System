@@ -3,7 +3,12 @@
 
 #define MAX_USERNAME 30
 #define MAX_EMAIL 50
-#define MAX_PRODUCT_NAME 100
+//PRODUCT
+#define MAX_PRODUCT_NAME 50
+#define MAX_CATEGORY 30
+#define DESCRIPTION 100
+
+
 #define MAX_PASSWORD 30
 #define MAX_tpNumber 11
 #define MAX_Adress 300
@@ -42,11 +47,12 @@ typedef struct {
 
 
 typedef struct {
-    int id;
-    char name[MAX_PRODUCT_NAME];
+    int productId;
+    char productName[50];
+    char category[30];
     float price;
-    int stock;
-    int isActive;
+    int stockQuantity;
+    char description[100];
 } Product;
 
 typedef struct {

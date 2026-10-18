@@ -1,8 +1,16 @@
+#include "../include/orders.h"
 #include <stdio.h>
-#include "orders.h"
-void orderMenu(){ printf("\n[Orders Module] Not implemented yet - Team member working\n"); }
-void viewOrders(){ printf("\n[Orders Module] Not implemented yet\n"); }
-//this is a dummy data this will 
 
+void viewOrders(char* username) {
+    printf("Orders for user: %s\n", username);
+    // TODO: data/orders.dat read
+}
 
-//mena idan oyage code eka karagena yanna
+void viewOrdersAdmin() {
+    printf("All orders (Admin view)\n");
+    // TODO: all orders read
+}
+
+void placeOrder(char* username) {
+    // implementation
+}
