@@ -51,9 +51,9 @@ void productMenu(void) {
 }
 
 void addProduct(void) {
-    FILE *file = fopen("data/products.dat", "ab");
+    FILE *file = fopen("data/products.txt", "ab");
     if (file == NULL) {
-        file = fopen("products.dat", "ab");
+        file = fopen("products.txt", "ab");
         if (file == NULL) {
             printf("Error opening file!\n");
             return;
@@ -91,8 +91,8 @@ void addProduct(void) {
 }
 
 void viewProducts(void) {
-    FILE *file = fopen("data/products.dat", "rb");
-    if (file == NULL) file = fopen("products.dat", "rb");
+    FILE *file = fopen("data/products.txt", "rb");
+    if (file == NULL) file = fopen("products.txt", "rb");
     if (file == NULL) {
         printf("No products found! Add products first.\n");
         return;
@@ -114,8 +114,8 @@ void viewProducts(void) {
 }
 
 void searchProduct(void) {
-    FILE *file = fopen("data/products.dat", "rb");
-    if (file == NULL) file = fopen("products.dat", "rb");
+    FILE *file = fopen("data/products.txt", "rb");
+    if (file == NULL) file = fopen("products.txt", "rb");
     if (file == NULL) {
         printf("No products available.\n");
         return;
@@ -140,12 +140,12 @@ void searchProduct(void) {
 }
 
 void updateProduct(void) {
-    FILE *file = fopen("data/products.dat", "rb");
-    if (file == NULL) file = fopen("products.dat", "rb");
+    FILE *file = fopen("data/products.txt", "rb");
+    if (file == NULL) file = fopen("products.txt", "rb");
     if (file == NULL) { printf("No products to update.\n"); return; }
 
-    FILE *tempFile = fopen("data/temp.dat", "wb");
-    if (tempFile == NULL) tempFile = fopen("temp.dat", "wb");
+    FILE *tempFile = fopen("data/temp.txt", "wb");
+    if (tempFile == NULL) tempFile = fopen("temp.txt", "wb");
     if (tempFile == NULL) { fclose(file); return; }
 
     int searchId, found = 0;
@@ -183,25 +183,25 @@ void updateProduct(void) {
     fclose(tempFile);
 
     if (found) {
-        remove("data/products.dat");
-        remove("products.dat");
-        rename("data/temp.dat", "data/products.dat");
-        rename("temp.dat", "products.dat");
+        remove("data/products.txt");
+        remove("products.txt");
+        rename("txta/temp.txt", "data/products.txt");
+        rename("temp.txt", "products.txt");
         printf("Product updated!\n");
     } else {
-        remove("data/temp.dat");
-        remove("temp.dat");
+        remove("data/temp.txt");
+        remove("temp.txt");
         printf("Not found.\n");
     }
 }
 
 void deleteProduct(void) {
-    FILE *file = fopen("data/products.dat", "rb");
-    if (file == NULL) file = fopen("products.dat", "rb");
+    FILE *file = fopen("data/products.txt", "rb");
+    if (file == NULL) file = fopen("products.txt", "rb");
     if (file == NULL) { printf("No products to delete.\n"); return; }
 
-    FILE *tempFile = fopen("data/temp.dat", "wb");
-    if (tempFile == NULL) tempFile = fopen("temp.dat", "wb");
+    FILE *tempFile = fopen("data/temp.txt", "wb");
+    if (tempFile == NULL) tempFile = fopen("temp.txt", "wb");
 
     int searchId, found = 0;
     printf("\nEnter Product ID to delete: ");
@@ -216,21 +216,21 @@ void deleteProduct(void) {
     fclose(tempFile);
 
     if (found) {
-        remove("data/products.dat");
-        remove("products.dat");
-        rename("data/temp.dat", "data/products.dat");
-        rename("temp.dat", "products.dat");
+        remove("data/products.txt");
+        remove("products.txt");
+        rename("data/temp.txt", "data/products.txt");
+        rename("temp.txt", "products.txt");
         printf("Product deleted!\n");
     } else {
-        remove("data/temp.dat");
-        remove("temp.dat");
+        remove("data/temp.txt");
+        remove("temp.txt");
         printf("ID %d not found.\n", searchId);
     }
 }
 
 int checkStockAvailability(int productId, int requiredQty) {
-    FILE *file = fopen("data/products.dat", "rb");
-    if (file == NULL) file = fopen("products.dat", "rb");
+    FILE *file = fopen("data/products.txt", "rb");
+    if (file == NULL) file = fopen("products.txt", "rb");
     if (file == NULL) return 0;
     Product p;
     int available = 0;
@@ -244,11 +244,11 @@ int checkStockAvailability(int productId, int requiredQty) {
 }
 
 void updateStockAfterPurchase(int productId, int purchasedQty) {
-    FILE *file = fopen("data/products.dat", "rb");
-    if (file == NULL) file = fopen("products.dat", "rb");
+    FILE *file = fopen("data/products.txt", "rb");
+    if (file == NULL) file = fopen("products.txt", "rb");
     if (file == NULL) return;
-    FILE *tempFile = fopen("data/temp.dat", "wb");
-    if (tempFile == NULL) tempFile = fopen("temp.dat", "wb");
+    FILE *tempFile = fopen("data/temp.txt", "wb");
+    if (tempFile == NULL) tempFile = fopen("temp.txt", "wb");
     if (tempFile == NULL) { fclose(file); return; }
 
     Product p;
@@ -261,8 +261,8 @@ void updateStockAfterPurchase(int productId, int purchasedQty) {
     }
     fclose(file);
     fclose(tempFile);
-    remove("data/products.dat");
-    remove("products.dat");
-    rename("data/temp.dat", "data/products.dat");
-    rename("temp.dat", "products.dat");
+    remove("data/products.txt");
+    remove("products.txt");
+    rename("data/temp.txt", "data/products.txt");
+    rename("temp.txt", "products.txt");
 }

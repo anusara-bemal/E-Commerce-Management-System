@@ -1,9 +1,16 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include "ui.h"
 
-void clearScreen() {
-    printf("\033[2J\033[H");
+void clearScreen(void)
+{
+#ifdef _WIN32
+    system("cls");
+#else
+    system("clear");
+#endif
 }
+
 
 void showSplash() {
     clearScreen();
@@ -11,18 +18,22 @@ void showSplash() {
     printf("  NORDIC E-COMMERCE\n");
     printf("\x1b[0m\n");
 }
+#include <stdio.h>
 
-void drawHeader(const char* title) {
+void drawHeader(const char *title)
+{
     printf("\n\x1b[36m┌────────────────────────────────────────┐\x1b[0m\n");
-    printf("\x1b[36m│\x1b[0m  \x1b[1m%-35s\x1b[0m  \x1b[36m│\x1b[0m\n", title);
+    printf("\x1b[36m│\x1b[0m  \x1b[1m%-35.35s\x1b[0m   \x1b[36m│\x1b[0m\n", title);
     printf("\x1b[36m└────────────────────────────────────────┘\x1b[0m\n");
 }
 
+
+
 void drawMenuItem(int num, const char* title, const char* desc) {
     if(num == 99) {
-        printf("\x1b[36m│\x1b[0m  \x1b[33m%d. %-15s \x1b[36m│\x1b[0m\n", num, title);
+        printf("\x1b[36m│\x1b[0m  \x1b[33m%d. %-15s \x1b[36m\x1b[0m\n", num, title);
     } else {
-        printf("\x1b[36m│\x1b[0m  \x1b[32m%d. %-15s \x1b[2m%s \x1b[0m\x1b[36m│\x1b[0m\n", num, title, desc);
+        printf("\x1b[36m│\x1b[0m  \x1b[32m%d. %-15s \x1b[2m%s \x1b[0m\x1b[36m\x1b[0m\n", num, title, desc);
     }
 }
 

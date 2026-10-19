@@ -1,11 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdlib.h>
 #include "models.h"
 #include "users.h"
 #include "products.h"
-#include "cart.h"
-#include "orders.h"
 #include "admin.h"
 #include "ui.h"
 #include "cart.h"
@@ -20,12 +19,13 @@ void showAboutUs(void);
 int main(void)
 {
     int choice;
-    showSplash();
+    showSplash(); //display splash screen
     printf("\nPress Enter to continue...");
-    getchar();
+    getchar(); //get input
 
     do
     {
+        clearScreen();
         displayMainMenu();
         printf("\nEnter your choice: ");
         if (scanf("%d", &choice) != 1)
@@ -90,7 +90,7 @@ void customerLogin(void)
 
         int userIn;
         while (1)
-        {
+        {   clearScreen();
             displayCustomerMenu();
             printf("\nEnter choice: ");
             if (scanf("%d", &userIn) != 1) {
@@ -112,16 +112,14 @@ void customerLogin(void)
                 getchar();
                 break;
             case 3:
-                viewCart(user); // MAIN FEATURE
+                // viewCart(user); // MAIN FEATURE
                 break;
             case 4:
-                viewOrders(user); // MAIN FEATURE
+                // viewOrders(user); // MAIN FEATURE
                 break;
             case 5:
-                updateprofile(user);
+                    return;
                 break;
-            case 0:
-                return;
             default:
                 printf("Invalid choice!\n");
                 printf("Press Enter...");
@@ -147,7 +145,11 @@ void adminLogin(void)
     drawHeader("ADMIN LOGIN");
     if (login(user) == 1)
     {
-        printf("\n%sAdmin %s logged in%s\n", GREEN, user, RESET);
+        int role = getUserRole(user);
+        if (role != 0
+        )
+        {
+            printf("\n%sAdmin %s logged in%s\n", GREEN, user, RESET);
         printf("Press Enter...");
         getchar();
 
@@ -166,15 +168,19 @@ void adminLogin(void)
             
             // Call product admin functions
             switch(adminChoice) {
-                case 1: viewProducts(); break;
-                case 2: addProduct(); break;
-                case 3: updateProduct(); break;
-                case 4: deleteProduct(); break;
-                case 5: viewOrdersAdmin(); break;
+                case 1: addProduct(); break;
+                case 2: updateProduct(); break;
+                case 3: deleteProduct();  break;
+                // case 4:  break; //create view all users
+                // case 5: viewOrdersAdmin(); break;
+                case 7: logout(user); break;
                 default: printf("Module %d\n", adminChoice);
             }
             printf("\nPress Enter...");
             getchar();
+        }
+        
+        
         }
     }
 }

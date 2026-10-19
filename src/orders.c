@@ -11,6 +11,6 @@ void viewOrdersAdmin() {
     // TODO: all orders read
 }
 
-void placeOrder(char* username) {
-    // implementation
-}
+// void placeOrder(char* username) {
+//     // implementation
+// }
