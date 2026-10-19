@@ -10,7 +10,7 @@
 
 
 #define MAX_PASSWORD 30
-#define MAX_tpNumber 11
+#define MAX_tpNumber 20
 #define MAX_Adress 300
 #define MAX_CART_ITEMS 50
 
@@ -57,6 +57,9 @@ typedef struct {
 
 typedef struct {
     int productId;
+    char productName[MAX_PRODUCT_NAME];
+    float unitPrice;
+    float subtotal;
     int quantity;
 } CartItem;
 
@@ -68,6 +71,11 @@ typedef struct {
 
 typedef struct {
     int orderId;
+    char customerName[MAX_USERNAME];
+    char phoneNumber[MAX_tpNumber];
+    char address[MAX_Adress];
+    int itemcount;
+    int discountAmount;
     int userId;
     float totalAmount;
     OrderStatus status;
