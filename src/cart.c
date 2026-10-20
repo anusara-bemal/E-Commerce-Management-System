@@ -1,9 +1,11 @@
-<<<<<<< HEAD
-#include<stdio.h>
+#include "../include/cart.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-// Struct definitions following PascalCase and G14 guidelines
+// =================================================================
+// STRUCT DEFINITIONS
+// =================================================================
 typedef struct {
     int productId;
     char productName[50];
@@ -14,7 +16,7 @@ typedef struct {
 } Product;
 
 typedef struct {
-    int customerId;
+    char customerName[50];
     int productId;
     char productName[50];
     int quantity;
@@ -22,30 +24,17 @@ typedef struct {
     float subtotal;
 } CartItem;
 
-// Function Prototypes following camelCase and G14 guidelines
-void addToCart(int customerId);
-void viewCart(int customerId);
-void updateCartQuantity(int customerId);
-void removeFromCart(int customerId);
-void clearCart(int customerId);
+// Internal Function Prototype
+void updateCartQuantity(char* username);
 
-
-// 1. ADD PRODUCT TO CART
-
-void addToCart(int customerId) {
-    int productId;
-    int quantity;
+// =================================================================
+// 1. ADD TO CART FUNCTION
+// =================================================================
+void addToCart(char* username, int productId, int quantity) {
     Product product;
     CartItem cartItem;
     int found = 0;
 
-    printf("\n========================================\n");
-    printf("            ADD PRODUCT TO CART         \n");
-    printf("========================================\n");
-    printf("Enter Product ID to buy: ");
-    scanf("%d", &productId);
-
-    // Check if product exists and has enough stock in products.dat
     FILE *fpProd = fopen("products.dat", "rb");
     if (fpProd == NULL) {
         printf("[Error] Could not open products file!\n");
@@ -70,24 +59,18 @@ void addToCart(int customerId) {
         return;
     }
 
-    printf("Product Found: %s | Price: Rs. %.2f | Available Stock: %d\n", product.productName, product.price, product.stockQuantity);
-    printf("Enter Quantity: ");
-    scanf("%d", &quantity);
-
     if (quantity <= 0 || quantity > product.stockQuantity) {
         printf("[Error] Invalid quantity or exceeds available stock!\n");
         return;
     }
 
-    // Populate CartItem structure using G14 guidelines
-    cartItem.customerId = customerId;
+    strcpy(cartItem.customerName, username);
     cartItem.productId = product.productId;
     strcpy(cartItem.productName, product.productName);
     cartItem.quantity = quantity;
     cartItem.unitPrice = product.price;
     cartItem.subtotal = quantity * product.price;
 
-    // Save item to cart.dat
     FILE *fpCart = fopen("cart.dat", "ab");
     if (fpCart == NULL) {
         printf("[Error] Could not open cart file for writing!\n");
@@ -100,16 +83,16 @@ void addToCart(int customerId) {
     printf("\n[Success] %s (Qty: %d) added to your cart successfully!\n", cartItem.productName, cartItem.quantity);
 }
 
-
-// 2. VIEW CART & CART OPTIONS MENU
-
-void viewCart(int customerId) {
+// =================================================================
+// 2. VIEW CART FUNCTION
+// =================================================================
+void viewCart(char* username) {
     CartItem cartItem;
     float totalAmount = 0.0;
     int choice = 5;
 
     do {
-        system("clear"); // Use "cls" if compiling on Windows
+        system("cls"); // Windows නිසා "cls" ලෙස වෙනස් කරන ලදි
         printf("\n===============================================================\n");
         printf("                          SHOPPING CART                        \n");
         printf("===============================================================\n");
@@ -122,7 +105,7 @@ void viewCart(int customerId) {
 
         if (fpCart != NULL) {
             while (fread(&cartItem, sizeof(CartItem), 1, fpCart)) {
-                if (cartItem.customerId == customerId) {
+                if (strcmp(cartItem.customerName, username) == 0) {
                     hasItems = 1;
                     printf("%-20s %-8d Rs. %-8.2f Rs. %-8.2f\n", 
                            cartItem.productName, cartItem.quantity, 
@@ -137,7 +120,7 @@ void viewCart(int customerId) {
             printf("Your cart is currently empty.\n");
             printf("===============================================================\n");
             printf("\nPress Enter to return...");
-            while (getchar() != '\n'); // Clear buffer
+            while (getchar() != '\n'); 
             getchar();
             return;
         } else {
@@ -155,15 +138,19 @@ void viewCart(int customerId) {
         printf("Enter your choice: ");
         scanf("%d", &choice);
 
+        int targetId;
+
         switch (choice) {
             case 1:
-                updateCartQuantity(customerId);
+                updateCartQuantity(username);
                 break;
             case 2:
-                removeFromCart(customerId);
+                printf("\nEnter Product ID to remove from cart: ");
+                scanf("%d", &targetId);
+                removeFromCart(username, targetId);
                 break;
             case 3:
-                clearCart(customerId);
+                clearCart(username);
                 break;
             case 4:
                 printf("\n[Info] Proceeding to checkout...\n");
@@ -181,10 +168,10 @@ void viewCart(int customerId) {
     } while (choice != 5);
 }
 
-
-// 3. UPDATE CART QUANTITY
-
-void updateCartQuantity(int customerId) {
+// =================================================================
+// 3. UPDATE QUANTITY FUNCTION
+// =================================================================
+void updateCartQuantity(char* username) {
     int productId;
     int quantity;
     int found = 0;
@@ -192,7 +179,6 @@ void updateCartQuantity(int customerId) {
     printf("\nEnter Product ID to update quantity: ");
     scanf("%d", &productId);
 
-    // Check available stock in products.dat
     Product product;
     int productFound = 0;
     FILE *fpProd = fopen("products.dat", "rb");
@@ -240,7 +226,7 @@ void updateCartQuantity(int customerId) {
 
     CartItem cartItem;
     while (fread(&cartItem, sizeof(CartItem), 1, fpCart)) {
-        if (cartItem.customerId == customerId && cartItem.productId == productId) {
+        if (strcmp(cartItem.customerName, username) == 0 && cartItem.productId == productId) {
             cartItem.quantity = quantity;
             cartItem.subtotal = quantity * cartItem.unitPrice;
             found = 1;
@@ -264,15 +250,11 @@ void updateCartQuantity(int customerId) {
     getchar();
 }
 
-// -----------------------------------------------------------------
-// 4. REMOVE ITEM FROM CART
-// -----------------------------------------------------------------
-void removeFromCart(int customerId) {
-    int productId;
+// =================================================================
+// 4. REMOVE ITEM FUNCTION
+// =================================================================
+void removeFromCart(char* username, int productId) {
     int found = 0;
-
-    printf("\nEnter Product ID to remove from cart: ");
-    scanf("%d", &productId);
 
     FILE *fpCart = fopen("cart.dat", "rb");
     if (fpCart == NULL) {
@@ -289,8 +271,8 @@ void removeFromCart(int customerId) {
 
     CartItem cartItem;
     while (fread(&cartItem, sizeof(CartItem), 1, fpCart)) {
-        if (cartItem.customerId == customerId && cartItem.productId == productId) {
-            found = 1; // Skip this item to remove it
+        if (strcmp(cartItem.customerName, username) == 0 && cartItem.productId == productId) {
+            found = 1;
         } else {
             fwrite(&cartItem, sizeof(CartItem), 1, fpTemp);
         }
@@ -312,9 +294,10 @@ void removeFromCart(int customerId) {
     getchar();
 }
 
-// 5. CLEAR CART
-
-void clearCart(int customerId) {
+// =================================================================
+// 5. CLEAR CART FUNCTION
+// =================================================================
+void clearCart(char* username) {
     FILE *fpCart = fopen("cart.dat", "rb");
     if (fpCart == NULL) {
         printf("[Error] Could not open cart file!\n");
@@ -330,8 +313,7 @@ void clearCart(int customerId) {
 
     CartItem cartItem;
     while (fread(&cartItem, sizeof(CartItem), 1, fpCart)) {
-        // Keep items belonging to other customers, remove for current customer
-        if (cartItem.customerId != customerId) {
+        if (strcmp(cartItem.customerName, username) != 0) {
             fwrite(&cartItem, sizeof(CartItem), 1, fpTemp);
         }
     }
@@ -342,32 +324,5 @@ void clearCart(int customerId) {
     remove("cart.dat");
     rename("temp.dat", "cart.dat");
 
-    printf("[Success] Your cart has been cleared successfully!\n");
-    printf("Press Enter to continue...");
-    while (getchar() != '\n');
-    getchar();
-}
-=======
-#include "../include/cart.h"
-#include <stdio.h>
 
-void viewCart(char* username) {
-    printf("Cart for user: %s\n", username);
-    // TODO: උඹේ logic එක මෙතන ලියන්න - data/cart.dat read කරන එක
-    printf("Cart feature coming soon - abyss level implementation pending!\n");
-}
-
-void addToCart(char* username, int productId, int quantity) {
-    // implementation
-}
-
-void removeFromCart(char* username, int productId) {
-    // implementation
-}
-
-void clearCart(char* username) {
-    // implementation
-}
-
-//mena idan oyage code eka karagena yanna
->>>>>>> 2d388b57d2b499a0c52c3e49928c7b30648e964a
+    
