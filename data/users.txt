@@ -1,0 +1,2 @@
+1|lahiru|1234|lahiru@gmail.com|0764990157|dambulla|0|1
+2|admin|1234|admin@example.com|0771234567|Matara|1|1
