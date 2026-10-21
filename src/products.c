@@ -51,9 +51,9 @@ void productMenu(void) {
 }
 
 void addProduct(void) {
-    FILE *file = fopen("data/products.txt", "ab");
+    FILE *file = fopen("data/products.txt", "a");
     if (file == NULL) {
-        file = fopen("products.txt", "ab");
+        file = fopen("products.txt", "a");
         if (file == NULL) {
             printf("Error opening file!\n");
             return;
@@ -92,7 +92,7 @@ void addProduct(void) {
 
 void viewProducts(void) {
     FILE *file = fopen("data/products.txt", "rb");
-    if (file == NULL) file = fopen("products.txt", "rb");
+    if (file == NULL) file = fopen("products.txt", "r");
     if (file == NULL) {
         printf("No products found! Add products first.\n");
         return;
@@ -114,8 +114,8 @@ void viewProducts(void) {
 }
 
 void searchProduct(void) {
-    FILE *file = fopen("data/products.txt", "rb");
-    if (file == NULL) file = fopen("products.txt", "rb");
+    FILE *file = fopen("data/products.txt", "r");
+    if (file == NULL) file = fopen("products.txt", "r");
     if (file == NULL) {
         printf("No products available.\n");
         return;
@@ -140,12 +140,12 @@ void searchProduct(void) {
 }
 
 void updateProduct(void) {
-    FILE *file = fopen("data/products.txt", "rb");
-    if (file == NULL) file = fopen("products.txt", "rb");
+    FILE *file = fopen("data/products.txt", "r");
+    if (file == NULL) file = fopen("products.txt", "r");
     if (file == NULL) { printf("No products to update.\n"); return; }
 
-    FILE *tempFile = fopen("data/temp.txt", "wb");
-    if (tempFile == NULL) tempFile = fopen("temp.txt", "wb");
+    FILE *tempFile = fopen("data/temp.txt", "w");
+    if (tempFile == NULL) tempFile = fopen("temp.txt", "w");
     if (tempFile == NULL) { fclose(file); return; }
 
     int searchId, found = 0;
