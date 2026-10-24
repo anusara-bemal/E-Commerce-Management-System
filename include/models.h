@@ -56,13 +56,13 @@ typedef struct {
 } Product;
 
 typedef struct {
+    char customerName[50];
     int productId;
-    char productName[MAX_PRODUCT_NAME];
+    char productName[50];
+    int quantity;
     float unitPrice;
     float subtotal;
-    int quantity;
 } CartItem;
-
 typedef struct {
     int userId; 
     CartItem items[MAX_CART_ITEMS];
