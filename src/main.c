@@ -102,7 +102,7 @@ void customerLogin(void)
             switch (userIn)
             {
             case 1:
-                viewProducts();
+                viewProductsAndAddToCart(user);
                 printf("\nPress Enter to continue...");
                 getchar();
                 break;
@@ -113,6 +113,7 @@ void customerLogin(void)
                 break;
             case 3:
                 // viewCart(user); // MAIN FEATURE
+                viewCart(user);
                 break;
             case 4:
                 // viewOrders(user); // MAIN FEATURE

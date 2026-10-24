@@ -1,0 +1,3 @@
+1|keyboard|tech|2500.00|25|tech keyboard
+2|MOUSE|TECH|100.00|23|MOUSE2
+3|banana|food|25.00|43|monkey banana

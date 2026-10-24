@@ -9,317 +9,705 @@
 // =================================================================
 // 1. ADD TO CART FUNCTION
 // =================================================================
-void addToCart(const char *username, int productId, int quantity) {
-    Product product;
-    CartItem cartItem;
-    int found = 0;
 
-    FILE *fpProd = fopen("products.txt", "r");
-    if (fpProd == NULL) {
-        printf("[Error] Could not open products file!\n");
+void addToCart(const char *username, int productId, int quantity)
+{
+    Product product;
+    int found = 0;
+    char line[512];
+
+    FILE *fpProd = fopen("data/products.txt", "r");
+
+    if (fpProd == NULL)
+    {
+        printf("Error: Cannot open products.txt\n");
         return;
     }
 
-    while (fread(&product, sizeof(Product), 1, fpProd)) {
-        if (product.productId == productId) {
-            found = 1;
-            break;
+    /* Find product using Product ID */
+    while (fgets(line, sizeof(line), fpProd) != NULL)
+    {
+        if (sscanf(line, "%d|%49[^|]|%29[^|]|%f|%d|%99[^\n]",
+                   &product.productId,
+                   product.productName,
+                   product.category,
+                   &product.price,
+                   &product.stockQuantity,
+                   product.description) == 6)
+        {
+            if (product.productId == productId)
+            {
+                found = 1;
+                break;
+            }
         }
     }
+
     fclose(fpProd);
 
-    if (!found) {
-        printf("[Error] Product ID %d not found!\n", productId);
+    /* Check whether product exists */
+    if (!found)
+    {
+        printf("Error: Product ID %d not found.\n", productId);
         return;
     }
 
-    if (product.stockQuantity <= 0) {
-        printf("[Error] Sorry, this product is out of stock!\n");
+    /* Check available stock */
+    if (product.stockQuantity <= 0)
+    {
+        printf("Sorry! This product is out of stock.\n");
         return;
     }
 
-    if (quantity <= 0 || quantity > product.stockQuantity) {
-        printf("[Error] Invalid quantity or exceeds available stock!\n");
+    /* Validate quantity */
+    if (quantity <= 0 || quantity > product.stockQuantity)
+    {
+        printf("Invalid quantity. Available stock: %d\n",
+               product.stockQuantity);
         return;
     }
 
-    strcpy(cartItem.customerName, username);
-    cartItem.productId = product.productId;
-    strcpy(cartItem.productName, product.productName);
-    cartItem.quantity = quantity;
-    cartItem.unitPrice = product.price;
-    cartItem.subtotal = quantity * product.price;
+    /* Open cart.txt in append mode */
+    FILE *fpCart = fopen("data/cart.txt", "a");
 
-    FILE *fpCart = fopen("cart.txt", "ab");
-    if (fpCart == NULL) {
-        printf("[Error] Could not open cart file for writing!\n");
+    if (fpCart == NULL)
+    {
+        printf("Error: Cannot open cart.txt\n");
         return;
     }
 
-    fwrite(&cartItem, sizeof(CartItem), 1, fpCart);
+    /* Save cart item as a text record */
+    fprintf(fpCart, "%s|%d|%s|%d|%.2f|%.2f\n",
+            username,
+            product.productId,
+            product.productName,
+            quantity,
+            product.price,
+            quantity * product.price);
+
     fclose(fpCart);
 
-    printf("\n[Success] %s (Qty: %d) added to your cart successfully!\n", cartItem.productName, cartItem.quantity);
+    printf("\n%s added to cart successfully!\n",
+           product.productName);
+
+    printf("Quantity: %d\n", quantity);
+    printf("Subtotal: Rs. %.2f\n", quantity * product.price);
 }
+
 
 // =================================================================
 // 2. VIEW CART FUNCTION
 // =================================================================
-void viewCart(const char *username) {
-    CartItem cartItem;
-    float totalAmount = 0.0;
-    int choice = 5;
 
-    do {
-        system("cls"); // Windows නිසා "cls" ලෙස වෙනස් කරන ලදි
+void viewCart(const char *username)
+{
+    char line[512];
+    float totalAmount;
+    int choice;
+
+    do
+    {
+        system("cls");
+
         printf("\n===============================================================\n");
         printf("                          SHOPPING CART                        \n");
         printf("===============================================================\n");
-        printf("%-20s %-8s %-12s %-12s\n", "Product", "Qty", "Price", "Subtotal");
+
+      printf("%-8s %-20s %-8s %-12s %-12s\n",
+       "ID", "Product", "Qty", "Price", "Subtotal");
+
         printf("---------------------------------------------------------------\n");
 
-        FILE *fpCart = fopen("cart.txt", "r");
+        FILE *fpCart = fopen("data/cart.txt", "r");
+
         int hasItems = 0;
-        totalAmount = 0.0;
+        totalAmount = 0.0f;
 
-        if (fpCart != NULL) {
-            while (fread(&cartItem, sizeof(CartItem), 1, fpCart)) {
-                if (strcmp(cartItem.customerName, username) == 0) {
-                    hasItems = 1;
-                    printf("%-20s %-8d Rs. %-8.2f Rs. %-8.2f\n", 
-                           cartItem.productName, cartItem.quantity, 
-                           cartItem.unitPrice, cartItem.subtotal);
-                    totalAmount += cartItem.subtotal;
-                }
-            }
-            fclose(fpCart);
-        }
-
-        if (!hasItems) {
-            printf("Your cart is currently empty.\n");
-            printf("===============================================================\n");
+        if (fpCart == NULL)
+        {
+            printf("Error: Cannot open data/cart.txt\n");
             printf("\nPress Enter to return...");
-            while (getchar() != '\n'); 
+
+            while (getchar() != '\n')
+                ;
+
             getchar();
             return;
-        } else {
-            printf("---------------------------------------------------------------\n");
-            printf("%-42s Rs. %.2f\n", "Total Amount:", totalAmount);
-            printf("===============================================================\n");
         }
 
-        printf("\nCart Options:\n");
-        printf("1. Update item quantity\n");
-        printf("2. Remove an item from cart\n");
-        printf("3. Clear entire cart\n");
-        printf("4. Proceed to Checkout\n");
-        printf("5. Return to Main Menu\n");
-        printf("Enter your choice: ");
-        scanf("%d", &choice);
+        while (fgets(line, sizeof(line), fpCart) != NULL)
+        {
+            char cname[50];
+            char pname[50];
+
+            int pid;
+            int qty;
+
+            float unit;
+            float sub;
+
+            if (sscanf(line, "%49[^|]|%d|%49[^|]|%d|%f|%f",
+                       cname,
+                       &pid,
+                       pname,
+                       &qty,
+                       &unit,
+                       &sub) == 6)
+            {
+                if (strcmp(cname, username) == 0)
+                {
+                    hasItems = 1;
+
+                   printf("%-8d %-20s %-8d Rs. %-8.2f Rs. %-8.2f\n",
+       pid, pname, qty, unit, sub);
+
+                    totalAmount += sub;
+                }
+            }
+        }
+
+        fclose(fpCart);
+
+        if (!hasItems)
+        {
+            printf("Your cart is empty.\n");
+            printf("===============================================================\n");
+            printf("\nPress Enter to return...");
+
+            while (getchar() != '\n')
+                ;
+
+            getchar();
+            return;
+        }
+
+        printf("---------------------------------------------------------------\n");
+
+        printf("%-42s Rs. %.2f\n",
+               "Total Amount:", totalAmount);
+
+        printf("===============================================================\n");
+
+        printf("\n1. Update Quantity");
+        printf("\n2. Remove Item");
+        printf("\n3. Clear Cart");
+        printf("\n4. Checkout");
+        printf("\n5. Return");
+        printf("\nEnter choice: ");
+
+        if (scanf("%d", &choice) != 1)
+        {
+            printf("Invalid input!\n");
+
+            while (getchar() != '\n')
+                ;
+
+            getchar();
+            choice = 0;
+            continue;
+        }
 
         int targetId;
 
-        switch (choice) {
+        switch (choice)
+        {
             case 1:
                 updateCartQuantity(username);
                 break;
+
             case 2:
-                printf("\nEnter Product ID to remove from cart: ");
-                scanf("%d", &targetId);
-                removeFromCart(username, targetId);
+                printf("Enter Product ID to remove: ");
+
+                if (scanf("%d", &targetId) == 1)
+                {
+                    removeFromCart(username, targetId);
+                }
+                else
+                {
+                    printf("Invalid Product ID!\n");
+
+                    while (getchar() != '\n')
+                        ;
+
+                    getchar();
+                }
                 break;
+
             case 3:
                 clearCart(username);
                 break;
+
             case 4:
-                printf("\n[Info] Proceeding to checkout...\n");
-                printf("Press Enter to continue...");
-                while (getchar() != '\n');
+                printf("Checkout functionality will be implemented separately.\n");
+
+                printf("\nPress Enter to continue...");
+
+                while (getchar() != '\n')
+                    ;
+
                 getchar();
                 break;
+
             case 5:
                 return;
+
             default:
-                printf("[Error] Invalid choice! Press Enter to try again...");
-                while (getchar() != '\n');
+                printf("Invalid choice!\n");
+
+                while (getchar() != '\n')
+                    ;
+
                 getchar();
+                break;
         }
-    } while (choice != 5);
+
+    } while (1);
 }
 
 // =================================================================
 // 3. UPDATE QUANTITY FUNCTION
 // =================================================================
-void updateCartQuantity(const char *username) {
+
+
+void updateCartQuantity(const char *username)
+{
     int productId;
     int quantity;
     int found = 0;
+    int productFound = 0;
 
-    printf("\nEnter Product ID to update quantity: ");
-    scanf("%d", &productId);
+    char line[512];
 
     Product product;
-    int productFound = 0;
-    FILE *fpProd = fopen("products.txt", "r");
-    if (fpProd != NULL) {
-        while (fread(&product, sizeof(Product), 1, fpProd)) {
-            if (product.productId == productId) {
+
+    /* Get Product ID */
+    printf("\nEnter Product ID to update quantity: ");
+
+    if (scanf("%d", &productId) != 1)
+    {
+        printf("Invalid Product ID!\n");
+
+        while (getchar() != '\n')
+            ;
+
+        return;
+    }
+
+    /* Open products.txt */
+    FILE *fpProd = fopen("data/products.txt", "r");
+
+    if (fpProd == NULL)
+    {
+        printf("Error: Cannot open data/products.txt\n");
+        return;
+    }
+
+    /* Search product using text file */
+    while (fgets(line, sizeof(line), fpProd) != NULL)
+    {
+        if (sscanf(line, "%d|%49[^|]|%29[^|]|%f|%d|%99[^\n]",
+                   &product.productId,
+                   product.productName,
+                   product.category,
+                   &product.price,
+                   &product.stockQuantity,
+                   product.description) == 6)
+        {
+            if (product.productId == productId)
+            {
                 productFound = 1;
                 break;
             }
         }
-        fclose(fpProd);
     }
 
-    if (!productFound) {
-        printf("[Error] Product ID not found in inventory!\n");
-        printf("Press Enter to continue...");
-        while (getchar() != '\n');
-        getchar();
+    fclose(fpProd);
+
+    /* Check product availability */
+    if (!productFound)
+    {
+        printf("Error: Product ID not found in inventory!\n");
         return;
     }
 
-    printf("Enter new quantity (Available Stock: %d): ", product.stockQuantity);
-    scanf("%d", &quantity);
+    /* Get new quantity */
+    printf("Enter new quantity (Available Stock: %d): ",
+           product.stockQuantity);
 
-    if (quantity <= 0 || quantity > product.stockQuantity) {
-        printf("[Error] Invalid quantity or exceeds available stock!\n");
-        printf("Press Enter to continue...");
-        while (getchar() != '\n');
-        getchar();
+    if (scanf("%d", &quantity) != 1)
+    {
+        printf("Invalid quantity!\n");
+
+        while (getchar() != '\n')
+            ;
+
         return;
     }
 
-    FILE *fpCart = fopen("cart.txt", "r");
-    if (fpCart == NULL) {
-        printf("[Error] Could not open cart file!\n");
+    if (quantity <= 0 || quantity > product.stockQuantity)
+    {
+        printf("Invalid quantity or exceeds available stock!\n");
         return;
     }
 
-    FILE *fpTemp = fopen("temp.txt", "w");
-    if (fpTemp == NULL) {
-        printf("[Error] Could not create temporary file!\n");
+    /* Read cart records into memory */
+    FILE *fpCart = fopen("data/cart.txt", "r");
+
+    if (fpCart == NULL)
+    {
+        printf("Error: Cannot open data/cart.txt\n");
+        return;
+    }
+
+    char **records = NULL;
+    int recordCount = 0;
+    int capacity = 10;
+
+    records = malloc(capacity * sizeof(char *));
+
+    if (records == NULL)
+    {
+        printf("Memory allocation failed!\n");
         fclose(fpCart);
         return;
     }
 
-    CartItem cartItem;
-    while (fread(&cartItem, sizeof(CartItem), 1, fpCart)) {
-        if (strcmp(cartItem.customerName, username) == 0 && cartItem.productId == productId) {
-            cartItem.quantity = quantity;
-            cartItem.subtotal = quantity * cartItem.unitPrice;
-            found = 1;
+    while (fgets(line, sizeof(line), fpCart) != NULL)
+    {
+        char cname[50];
+        char pname[50];
+
+        int pid;
+        int qty;
+
+        float unit;
+        float subtotal;
+
+        if (sscanf(line, "%49[^|]|%d|%49[^|]|%d|%f|%f",
+                   cname, &pid, pname, &qty, &unit, &subtotal) == 6)
+        {
+            if (strcmp(cname, username) == 0 && pid == productId)
+            {
+                qty = quantity;
+                subtotal = quantity * unit;
+                found = 1;
+
+                snprintf(line, sizeof(line),
+                         "%s|%d|%s|%d|%.2f|%.2f\n",
+                         cname, pid, pname, qty, unit, subtotal);
+            }
         }
-        fwrite(&cartItem, sizeof(CartItem), 1, fpTemp);
+
+        if (recordCount == capacity)
+        {
+            capacity *= 2;
+
+            char **newRecords = realloc(
+                records, capacity * sizeof(char *));
+
+            if (newRecords == NULL)
+            {
+                printf("Memory allocation failed!\n");
+
+                for (int i = 0; i < recordCount; i++)
+                    free(records[i]);
+
+                free(records);
+                fclose(fpCart);
+                return;
+            }
+
+            records = newRecords;
+        }
+
+        records[recordCount] = malloc(strlen(line) + 1);
+
+        if (records[recordCount] == NULL)
+        {
+            printf("Memory allocation failed!\n");
+
+            for (int i = 0; i < recordCount; i++)
+                free(records[i]);
+
+            free(records);
+            fclose(fpCart);
+            return;
+        }
+
+        strcpy(records[recordCount], line);
+        recordCount++;
     }
 
     fclose(fpCart);
-    fclose(fpTemp);
 
-    remove("cart.txt");
-    rename("temp.txt", "cart.txt");
+    /* Check whether item exists in the user's cart */
+    if (!found)
+    {
+        printf("Error: Product ID %d not found in your cart!\n",
+               productId);
 
-    if (found) {
-        printf("[Success] Cart quantity updated successfully!\n");
-    } else {
-        printf("[Error] Product ID %d not found in your cart!\n", productId);
+        for (int i = 0; i < recordCount; i++)
+            free(records[i]);
+
+        free(records);
+        return;
     }
-    printf("Press Enter to continue...");
-    while (getchar() != '\n');
-    getchar();
+
+    /* Rewrite cart.txt */
+    fpCart = fopen("data/cart.txt", "w");
+
+    if (fpCart == NULL)
+    {
+        printf("Error: Cannot rewrite data/cart.txt\n");
+
+        for (int i = 0; i < recordCount; i++)
+            free(records[i]);
+
+        free(records);
+        return;
+    }
+
+    for (int i = 0; i < recordCount; i++)
+    {
+        fputs(records[i], fpCart);
+        free(records[i]);
+    }
+
+    free(records);
+    fclose(fpCart);
+
+    printf("\nCart quantity updated successfully!\n");
+    printf("New quantity: %d\n", quantity);
+    printf("New subtotal: Rs. %.2f\n",
+           quantity * product.price);
 }
+
+
 
 // =================================================================
 // 4. REMOVE ITEM FUNCTION
 // =================================================================
-void removeFromCart(const char *username, int productId) {
+void removeFromCart(const char *username, int productId)
+{
+    char line[512];
     int found = 0;
 
-    FILE *fpCart = fopen("cart.txt", "r");
-    if (fpCart == NULL) {
-        printf("[Error] Could not open cart file!\n");
+    FILE *fpCart = fopen("data/cart.txt", "r");
+
+    if (fpCart == NULL)
+    {
+        printf("[Error] Could not open data/cart.txt!\n");
         return;
     }
 
-    FILE *fpTemp = fopen("temp.txt", "w");
-    if (fpTemp == NULL) {
+    FILE *fpTemp = fopen("data/temp_cart.txt", "w");
+
+    if (fpTemp == NULL)
+    {
         printf("[Error] Could not create temporary file!\n");
         fclose(fpCart);
         return;
     }
 
-    CartItem cartItem;
-    while (fread(&cartItem, sizeof(CartItem), 1, fpCart)) {
-        if (strcmp(cartItem.customerName, username) == 0 && cartItem.productId == productId) {
-            found = 1;
-        } else {
-            fwrite(&cartItem, sizeof(CartItem), 1, fpTemp);
+    while (fgets(line, sizeof(line), fpCart) != NULL)
+    {
+        char cname[50];
+        char pname[50];
+        int pid;
+        int qty;
+        float unit;
+        float subtotal;
+
+        if (sscanf(line, "%49[^|]|%d|%49[^|]|%d|%f|%f",
+                   cname, &pid, pname, &qty, &unit, &subtotal) == 6)
+        {
+            if (strcmp(cname, username) == 0 && pid == productId)
+            {
+                found = 1;
+                continue;
+            }
         }
+
+        fputs(line, fpTemp);
     }
 
     fclose(fpCart);
-    fclose(fpTemp);
 
-    remove("cart.txt");
-    rename("temp.txt", "cart.txt");
-
-    if (found) {
-        printf("[Success] Product ID %d removed from your cart.\n", productId);
-    } else {
-        printf("[Error] Product ID %d not found in your cart!\n", productId);
-    }
-    printf("Press Enter to continue...");
-    while (getchar() != '\n');
-    getchar();
-}
-
-// =================================================================
-// 5. CLEAR CART FUNCTION
-// =================================================================
-
-void clearCart(const char *username) {
-    FILE *fpCart = fopen("cart.txt", "r");
-
-    if (fpCart == NULL) {
-        printf("[Error] Could not open cart file!\n");
+    if (fclose(fpTemp) != 0)
+    {
+        printf("[Error] Could not finish writing temporary file!\n");
         return;
     }
 
-    FILE *fpTemp = fopen("temp.txt", "w");
+    if (!found)
+    {
+        remove("data/temp_cart.txt");
 
-    if (fpTemp == NULL) {
-        printf("[Error] Could not create temporary file!\n");
-        fclose(fpCart);
+        printf("[Error] Product ID %d not found in your cart!\n",
+               productId);
         return;
     }
 
-    CartItem cartItem;
-
-    while (fread(&cartItem, sizeof(CartItem), 1, fpCart) == 1) {
-        if (strcmp(cartItem.customerName, username) != 0) {
-            fwrite(&cartItem, sizeof(CartItem), 1, fpTemp);
-        }
-    }
-
-    fclose(fpCart);
-    fclose(fpTemp);
-
-    if (remove("cart.txt") != 0) {
-        printf("[Error] Could not remove original cart file!\n");
-        remove("temp.txt");
+    if (remove("data/cart.txt") != 0)
+    {
+        printf("[Error] Could not replace cart file!\n");
         return;
     }
 
-    if (rename("temp.txt", "cart.txt") != 0) {
+    if (rename("data/temp_cart.txt", "data/cart.txt") != 0)
+    {
         printf("[Error] Could not rename temporary cart file!\n");
         return;
     }
 
-    printf("[Success] Your cart has been cleared!\n");
+    printf("[Success] Product ID %d removed from your cart.\n",
+           productId);
+
     printf("Press Enter to continue...");
-    while (getchar() != '\n');
+    while (getchar() != '\n')
+        ;
     getchar();
 }
+// =================================================================
+// 5. CLEAR CART FUNCTION
+// =================================================================
+
+void clearCart(const char *username)
+{
+    char line[512];
+    int found = 0;
+
+    FILE *fpCart = fopen("data/cart.txt", "r");
+
+    if (fpCart == NULL)
+    {
+        printf("[Error] Could not open data/cart.txt!\n");
+        return;
+    }
+
+    char **records = NULL;
+    int recordCount = 0;
+    int capacity = 10;
+
+    records = malloc(capacity * sizeof(char *));
+
+    if (records == NULL)
+    {
+        printf("[Error] Memory allocation failed!\n");
+        fclose(fpCart);
+        return;
+    }
+
+    /* Read cart records from the text file */
+    while (fgets(line, sizeof(line), fpCart) != NULL)
+    {
+        char cname[50];
+        char pname[50];
+        int pid;
+        int qty;
+        float unit;
+        float subtotal;
+
+        if (sscanf(line, "%49[^|]|%d|%49[^|]|%d|%f|%f",
+                   cname, &pid, pname, &qty, &unit, &subtotal) == 6)
+        {
+            /* Skip items belonging to the current user */
+            if (strcmp(cname, username) == 0)
+            {
+                found = 1;
+                continue;
+            }
+        }
+
+        /* Increase memory capacity if necessary */
+        if (recordCount == capacity)
+        {
+            capacity *= 2;
+
+            char **newRecords = realloc(
+                records, capacity * sizeof(char *));
+
+            if (newRecords == NULL)
+            {
+                printf("[Error] Memory allocation failed!\n");
+
+                for (int i = 0; i < recordCount; i++)
+                {
+                    free(records[i]);
+                }
+
+                free(records);
+                fclose(fpCart);
+                return;
+            }
+
+            records = newRecords;
+        }
+
+        records[recordCount] = malloc(strlen(line) + 1);
+
+        if (records[recordCount] == NULL)
+        {
+            printf("[Error] Memory allocation failed!\n");
+
+            for (int i = 0; i < recordCount; i++)
+            {
+                free(records[i]);
+            }
+
+            free(records);
+            fclose(fpCart);
+            return;
+        }
+
+        strcpy(records[recordCount], line);
+        recordCount++;
+    }
+
+    fclose(fpCart);
+
+    /* Check whether the user has any cart items */
+    if (!found)
+    {
+        printf("[Info] Your cart is already empty.\n");
+
+        for (int i = 0; i < recordCount; i++)
+        {
+            free(records[i]);
+        }
+
+        free(records);
+        return;
+    }
+
+    /* Rewrite cart.txt without the current user's items */
+    fpCart = fopen("data/cart.txt", "w");
+
+    if (fpCart == NULL)
+    {
+        printf("[Error] Could not rewrite data/cart.txt!\n");
+
+        for (int i = 0; i < recordCount; i++)
+        {
+            free(records[i]);
+        }
+
+        free(records);
+        return;
+    }
+
+    for (int i = 0; i < recordCount; i++)
+    {
+        fputs(records[i], fpCart);
+        free(records[i]);
+    }
+
+    free(records);
+    fclose(fpCart);
+
+    printf("[Success] Your cart has been cleared!\n");
+}
+
 
 
     
