@@ -7,14 +7,6 @@
 #include "cart.h"
 
 // Forward declarations - error එක නැති කරන්න
-void productMenu(void);
-void addProduct(void);
-void viewProducts(void);
-void searchProduct(void);
-void updateProduct(void);
-void deleteProduct(void);
-int checkStockAvailability(int productId, int requiredQty);
-void updateStockAfterPurchase(int productId, int purchasedQty);
 
 // Product Management Menu
 void productMenu(void)
@@ -697,18 +689,18 @@ int checkStockAvailability(int productId, int requiredQty)
 
     fclose(file);
 
-    return 0;
+   return 0;
 }
-void updateStockAfterPurchase(int productId, int purchasedQty)
+int updateStockAfterPurchase(int productId, int purchasedQty)
 {
     if (purchasedQty <= 0)
-        return;
+        return 0;
 
     FILE *file = fopen("data/products.txt", "r");
     if (file == NULL)
         file = fopen("products.txt", "r");
     if (file == NULL)
-        return;
+        return 0;
 
     FILE *tempFile = fopen("data/temp.txt", "w");
     if (tempFile == NULL)
@@ -716,7 +708,7 @@ void updateStockAfterPurchase(int productId, int purchasedQty)
     if (tempFile == NULL)
     {
         fclose(file);
-        return;
+        return 1;
     }
 
     char line[512];
@@ -747,4 +739,7 @@ void updateStockAfterPurchase(int productId, int purchasedQty)
     remove("products.txt");
     if (rename("data/temp.txt", "data/products.txt") != 0)
         rename("temp.txt", "products.txt");
+
+
+    return 1;
 }

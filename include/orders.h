@@ -1,21 +1,38 @@
-#ifndef ORDER_H
-#define ORDER_H
+#ifndef ORDERS_H
+#define ORDERS_H
 
-// Calculate total price
-void order_process(const int *cartItem, int quantity,
-float *unitPrice, float *totalPrice);
+#include <stddef.h>
 
-// Convert status number to text
+void order_process(
+    const int *cartItem,
+    int quantity,
+    float *unitPrice,
+    float *totalPrice
+);
+
 const char *statusToText(int status);
 
-// Place an order
-void placeOrder(char username[], char phoneNumber[], char address[],
-int itemCount, float totalAmount);
+int placeOrder(
+    const char *username,
+    const char *phoneNumber,
+    const char *address,
+    int itemCount,
+    float totalAmount
+);
 
-// View orders belonging to a customer
 void myOrders(char username[]);
 
-// View all orders and update order status
 void updateOrderStatus(void);
 
+void checkout(const char *username);
+
+int getCustomerDetails(
+    const char *username,
+    char *phoneNumber,
+    size_t phoneSize,
+    char *address,
+    size_t addressSize
+);
+
 #endif
+

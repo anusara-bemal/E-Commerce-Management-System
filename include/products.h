@@ -12,7 +12,9 @@ void updateProduct(void);
 void deleteProduct(void);
 
 int checkStockAvailability(int productId, int requiredQty);
-void updateStockAfterPurchase(int productId, int purchasedQty);
+
 void viewProductsAndAddToCart(const char *username);
+
+int updateStockAfterPurchase(int productId, int purchasedQty);
 
 #endif

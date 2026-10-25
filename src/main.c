@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdlib.h>
 #include "models.h"
 #include "users.h"
 #include "products.h"
@@ -19,9 +18,9 @@ void showAboutUs(void);
 int main(void)
 {
     int choice;
-    showSplash(); //display splash screen
+    showSplash(); // display splash screen
     printf("\nPress Enter to continue...");
-    getchar(); //get input
+    getchar(); // get input
 
     do
     {
@@ -31,10 +30,12 @@ int main(void)
         if (scanf("%d", &choice) != 1)
         {
             printf("\n%sInvalid input! Please enter a number.%s\n", YELLOW, RESET);
-            while (getchar() != '\n');
+            while (getchar() != '\n')
+                ;
             continue;
         }
-        while (getchar() != '\n');
+        while (getchar() != '\n')
+            ;
 
         switch (choice)
         {
@@ -79,10 +80,13 @@ void customerLogin(void)
         // Trim username
         user[strcspn(user, "\r\n")] = 0;
         int i = 0;
-        while (user[i] == ' ' || user[i] == '\t') i++;
-        if (i > 0) memmove(user, user + i, strlen(user + i) + 1);
+        while (user[i] == ' ' || user[i] == '\t')
+            i++;
+        if (i > 0)
+            memmove(user, user + i, strlen(user + i) + 1);
         int len = strlen(user);
-        while (len > 0 && (user[len - 1] == ' ' || user[len - 1] == '\t')) user[--len] = 0;
+        while (len > 0 && (user[len - 1] == ' ' || user[len - 1] == '\t'))
+            user[--len] = 0;
 
         printf("\n%sCustomer %s logged in successfully!%s\n", GREEN, user, RESET);
         printf("Press Enter...");
@@ -90,14 +94,18 @@ void customerLogin(void)
 
         int userIn;
         while (1)
-        {   clearScreen();
+        {
+            clearScreen();
             displayCustomerMenu();
             printf("\nEnter choice: ");
-            if (scanf("%d", &userIn) != 1) {
-                while(getchar() != '\n');
+            if (scanf("%d", &userIn) != 1)
+            {
+                while (getchar() != '\n')
+                    ;
                 continue;
             }
-            while (getchar() != '\n');
+            while (getchar() != '\n')
+                ;
 
             switch (userIn)
             {
@@ -116,11 +124,12 @@ void customerLogin(void)
                 viewCart(user);
                 break;
             case 4:
-                // viewOrders(user); // MAIN FEATURE
+                myOrders(user);
+                printf("\nPress Enter to continue...");
+                getchar();
                 break;
             case 5:
-                    return;
-                break;
+                return;
             default:
                 printf("Invalid choice!\n");
                 printf("Press Enter...");
@@ -147,41 +156,54 @@ void adminLogin(void)
     if (login(user) == 1)
     {
         int role = getUserRole(user);
-        if (role != 0
-        )
+        if (role != 0)
         {
             printf("\n%sAdmin %s logged in%s\n", GREEN, user, RESET);
-        printf("Press Enter...");
-        getchar();
-
-        int adminChoice;
-        while (1)
-        {
-            displayAdminMenu();
-            printf("\nEnter choice: ");
-            if (scanf("%d", &adminChoice) != 1) {
-                while(getchar() != '\n');
-                continue;
-            }
-            while (getchar() != '\n');
-
-            if (adminChoice == 7 || adminChoice == 0) break;
-            
-            // Call product admin functions
-            switch(adminChoice) {
-                case 1: addProduct(); break;
-                case 2: updateProduct(); break;
-                case 3: deleteProduct();  break;
-                // case 4:  break; //create view all users
-                // case 5: viewOrdersAdmin(); break;
-                case 7: logout(user); break;
-                default: printf("Module %d\n", adminChoice);
-            }
-            printf("\nPress Enter...");
+            printf("Press Enter...");
             getchar();
-        }
-        
-        
+
+            int adminChoice;
+            while (1)
+            {
+                displayAdminMenu();
+                printf("\nEnter choice: ");
+                if (scanf("%d", &adminChoice) != 1)
+                {
+                    while (getchar() != '\n')
+                        ;
+                    continue;
+                }
+                while (getchar() != '\n')
+                    ;
+
+                if (adminChoice == 7 || adminChoice == 0)
+                    break;
+
+                // Call product admin functions
+                switch (adminChoice)
+                {
+                case 1:
+                    addProduct();
+                    break;
+                case 2:
+                    updateProduct();
+                    break;
+                case 3:
+                    deleteProduct();
+                    break;
+                // case 4:  break; //create view all users
+                case 5:
+                    updateOrderStatus();
+                    break;
+                case 7:
+                    logout(user);
+                    break;
+                default:
+                    printf("Module %d\n", adminChoice);
+                }
+                printf("\nPress Enter...");
+                getchar();
+            }
         }
     }
 }
