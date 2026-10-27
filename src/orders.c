@@ -920,210 +920,189 @@ void checkout(const char *username)
     clearScreen();
     drawHeader("CHECKOUT");
     printf("Customer : %s\n", username);
-    printf("Items    : %d\n", itemCount);
+    printf("Items    : %d\n\n", itemCount);
 
-    printf("\nCart Items:\n");
     for (int i = 0; i < itemCount; i++)
     {
-        printf("%d. Product ID : %d\n", i + 1, productIds[i]);
-        printf("   Quantity   : %d\n", quantities[i]);
-        printf("   Unit Price : Rs. %.2f\n", unitPrices[i]);
-        printf("   Subtotal   : Rs. %.2f\n", quantities[i] * unitPrices[i]);
+        printf("%d. Product ID : %d | Qty : %d | Unit : Rs. %.2f | Subtotal : Rs. %.2f\n",
+               i + 1, productIds[i], quantities[i], unitPrices[i], quantities[i] * unitPrices[i]);
     }
+    printf("\n----------------------------------------\n");
+    printf("Subtotal : Rs. %.2f\n", totalAmount);
 
-    // ---------- Checkout : Delivery ----------
-    int deliveryMethod = chooseDeliveryMethod(totalAmount);
-    float shippingFee = getDeliveryFee(deliveryMethod, totalAmount);
-    float grandTotal = totalAmount + shippingFee;
+    int step = 1;
+    int deliveryMethod = 1;
+    float shippingFee = 0.0f;
+    float grandTotal = totalAmount;
 
-    /* Retrieve registered customer details */
     char savedPhone[30] = {0};
     char savedAddress[200] = {0};
     int hasSavedDetails = getCustomerDetails(username,
                                              savedPhone, sizeof(savedPhone),
                                              savedAddress, sizeof(savedAddress));
 
-    printf("\n========================================\n");
-    printf("           SHIPPING DETAILS            \n");
-    printf("========================================\n");
+    phoneNumber[0] = '\0';
+    address[0] = '\0';
 
-    if (hasSavedDetails)
+    while (step == 1)
     {
-        printf("Saved Phone   : %s\n", savedPhone);
-        printf("Saved Address : %s\n", savedAddress);
-        printf("\nUse saved shipping details?\n");
-        printf("1. Yes, use saved details\n");
-        printf("2. No, enter new shipping details\n");
-        printf("Enter choice (1/2): ");
+        clearScreen();
+        drawHeader("CHECKOUT");
+        printf("Customer : %s | Subtotal : Rs. %.2f\n\n", username, totalAmount);
+        printf("[STEP 1] DELIVERY\n\n");
+        printf("1. Standard Shipping - Rs. %.2f (5-8 days)\n", STANDARD_SHIPPING_FEE);
+        printf("2. Express Shipping - Rs. %.2f (2-4 days)\n", EXPRESS_SHIPPING_FEE);
+        if (totalAmount >= FREE_SHIPPING_OVER)
+            printf("(Free Standard over Rs. %.2f)\n", FREE_SHIPPING_OVER);
+        printf("\n0. Back\n");
+        printf("Select: ");
 
-        int shipChoice = 0;
-        if (scanf("%d", &shipChoice) != 1)
+        int choice = -1;
+        if (scanf("%d", &choice) != 1)
         {
             while (getchar() != '\n' && !feof(stdin)) {}
-            shipChoice = 1;
+            continue;
         }
         while (getchar() != '\n' && !feof(stdin)) {}
 
-        if (shipChoice == 2)
+        if (choice == 0) return;
+        if (choice == 1 || choice == 2)
         {
-            printf("\nEnter new phone number: ");
-            if (scanf("%29s", phoneNumber) != 1)
+            deliveryMethod = choice;
+            shippingFee = getDeliveryFee(deliveryMethod, totalAmount);
+            grandTotal = totalAmount + shippingFee;
+            step = 2;
+            continue;
+        }
+        printf("Invalid choice\n");
+        printf("Press Enter to continue...");
+        while (getchar() != '\n' && !feof(stdin)) {}
+    }
+
+    while (step == 2)
+    {
+        clearScreen();
+        drawHeader("CHECKOUT");
+        printf("Customer : %s | Subtotal : Rs. %.2f | Shipping : Rs. %.2f | Total : Rs. %.2f\n\n", username, totalAmount, shippingFee, grandTotal);
+        printf("[STEP 2] SHIPPING DETAILS\n\n");
+        if (hasSavedDetails)
+        {
+            printf("Saved Phone   : %s\n", savedPhone);
+            printf("Saved Address : %s\n\n", savedAddress);
+            printf("1. Use saved details\n");
+            printf("2. Enter new shipping details\n");
+            printf("\n0. Back\n");
+            printf("Select: ");
+
+            int sc = -1;
+            if (scanf("%d", &sc) != 1)
             {
                 while (getchar() != '\n' && !feof(stdin)) {}
-                if (hasSavedDetails) strcpy(phoneNumber, savedPhone);
-                else phoneNumber[0] = '\0';
+                continue;
             }
             while (getchar() != '\n' && !feof(stdin)) {}
 
-            printf("Enter new address: ");
-            if (scanf(" %199[^\n]", address) != 1)
+            if (sc == 0) { step = 1; continue; }
+            if (sc == 1)
             {
-                while (getchar() != '\n' && !feof(stdin)) {}
-                if (hasSavedDetails) strcpy(address, savedAddress);
-                else address[0] = '\0';
+                strcpy(phoneNumber, savedPhone);
+                strcpy(address, savedAddress);
+                step = 3;
+                continue;
             }
+            if (sc == 2)
+            {
+                printf("\nPhone: ");
+                if (scanf("%29s", phoneNumber) != 1) { while (getchar()!='\n'&&!feof(stdin)){} phoneNumber[0]='\0'; }
+                while (getchar() != '\n' && !feof(stdin)) {}
+                printf("Address: ");
+                if (scanf(" %199[^\n]", address) != 1) { while (getchar()!='\n'&&!feof(stdin)){} address[0]='\0'; }
+                while (getchar() != '\n' && !feof(stdin)) {}
+                if (phoneNumber[0] && address[0]) { step = 3; continue; }
+                printf("Invalid details\n");
+                printf("Press Enter to continue...");
+                while (getchar() != '\n' && !feof(stdin)) {}
+                continue;
+            }
+            printf("Invalid choice\n");
+            printf("Press Enter to continue...");
             while (getchar() != '\n' && !feof(stdin)) {}
+            continue;
         }
         else
         {
-            strcpy(phoneNumber, savedPhone);
-            strcpy(address, savedAddress);
-        }
-    }
-    else
-    {
-        printf("No saved shipping details found.\n");
-        printf("\nEnter phone number: ");
-        if (scanf("%29s", phoneNumber) != 1)
-        {
+            printf("Phone: ");
+            if (scanf("%29s", phoneNumber) != 1) { while (getchar()!='\n'&&!feof(stdin)){} phoneNumber[0]='\0'; }
             while (getchar() != '\n' && !feof(stdin)) {}
-            phoneNumber[0] = '\0';
-        }
-        while (getchar() != '\n' && !feof(stdin)) {}
-
-        printf("Enter address: ");
-        if (scanf(" %199[^\n]", address) != 1)
-        {
+            printf("Address: ");
+            if (scanf(" %199[^\n]", address) != 1) { while (getchar()!='\n'&&!feof(stdin)){} address[0]='\0'; }
             while (getchar() != '\n' && !feof(stdin)) {}
-            address[0] = '\0';
+            if (phoneNumber[0] && address[0]) { step = 3; continue; }
+            printf("\n0. Back\n");
+            printf("Select 0 to go back or retry: ");
+            int bx = -1;
+            if (scanf("%d",&bx)==1 && bx==0){while(getchar()!='\n'&&!feof(stdin)){} step=1; continue;}
+            while (getchar() != '\n' && !feof(stdin)) {}
+            continue;
         }
-        while (getchar() != '\n' && !feof(stdin)) {}
     }
 
-    if (phoneNumber[0] == '\0' || address[0] == '\0')
+    while (step == 3)
     {
-        printf("Invalid shipping details.\n");
-        return;
-    }
-
-    printf("\nShipping to:\n");
-    printf("Phone   : %s\n", phoneNumber);
-    printf("Address : %s\n", address);
-
-    // ---------- Checkout : Payment ----------
-    int paymentMethod = choosePaymentMethod();
-
-
-
-
-    // ---------- Show order summary ----------
-    printf("\n========================================\n");
-    printf("           ORDER SUMMARY            \n");
-    printf("========================================\n");
-    printf("Customer : %s\n", username);
-    printf("Phone    : %s\n", phoneNumber);
-    printf("Address  : %s\n", address);
-    printf("\nItems    : %d\n", itemCount);
-    printf("Subtotal : Rs. %.2f\n", totalAmount);
-    printf("Shipping : Rs. %.2f\n", shippingFee);
-    printf("Total    : Rs. %.2f\n", grandTotal);
-    printf("Delivery : %s\n", deliveryMethodText(deliveryMethod));
-    printf("Payment  : %s\n", paymentMethodText(paymentMethod));
-    printf("========================================\n");
-
-    // Confirm order
-    char confirmation;
-
-    printf("\nConfirm order? (y/n): ");
-
-    if (scanf(" %c", &confirmation) != 1)
-    {
-        while (getchar() != '\n' && !feof(stdin))
+        clearScreen();
+        drawHeader("CHECKOUT");
+        printf("Customer : %s | Total : Rs. %.2f\n\n", username, grandTotal);
+        printf("[STEP 3] PAYMENT\n\n");
+        printf("1. Cash on Delivery (Pay on delivery)\n");
+        printf("\n0. Back\n");
+        printf("Select: ");
+        int pc = -1;
+        if (scanf("%d",&pc)!=1){ while(getchar()!='\n'&&!feof(stdin)){} continue;}
+        while(getchar()!='\n'&&!feof(stdin)){}
+        if (pc == 0){ step = 2; continue; }
+        if (pc == 1)
         {
-        }
+            int paymentMethod = PAYMENT_COD;
+            clearScreen();
+            drawHeader("CHECKOUT");
+            printf("ORDER SUMMARY\n\n");
+            printf("Customer : %s\n", username);
+            printf("Phone    : %s\n", phoneNumber);
+            printf("Address  : %s\n\n", address);
+            printf("Subtotal : Rs. %.2f\n", totalAmount);
+            printf("Shipping : Rs. %.2f\n", shippingFee);
+            printf("Total    : Rs. %.2f\n", grandTotal);
+            printf("Delivery : %s\n", deliveryMethodText(deliveryMethod));
+            printf("Payment  : CASH ON DELIVERY\n\n");
+            printf("Confirm order? (y/n): ");
 
-        return;
-    }
+            char confirmation;
+            if (scanf(" %c", &confirmation) != 1) { while(getchar()!='\n'&&!feof(stdin)){} return; }
+            while(getchar()!='\n'&&!feof(stdin)){}
+            if (confirmation != 'y' && confirmation != 'Y'){ printf("Checkout cancelled.\n"); printf("Press Enter to continue..."); while(getchar()!='\n'&&!feof(stdin)){} return; }
 
-    while (getchar() != '\n' && !feof(stdin))
-    {
-    }
+            for (int i = 0; i < itemCount; i++)
+            {
+                if (!checkStockAvailability(productIds[i], quantities[i])){ printf("Stock changed. Order cancelled.\n"); printf("Press Enter to continue..."); while(getchar()!='\n'&&!feof(stdin)){} return; }
+            }
 
-    if (confirmation != 'y' && confirmation != 'Y')
-    {
-        printf("Checkout cancelled.\n");
-        return;
-    }
+            int newOrderId = 0;
+            if (!placeOrder((char *)username, phoneNumber, address, itemCount, grandTotal, &newOrderId)){ printf("Order failed.\n"); printf("Press Enter to continue..."); while(getchar()!='\n'&&!feof(stdin)){} return; }
 
-    // Recheck stock
-    for (int i = 0; i < itemCount; i++)
-    {
-        if (!checkStockAvailability(productIds[i],
-                                    quantities[i]))
-        {
-            printf("Stock changed. Order cancelled.\n");
+            generateInvoice(newOrderId, (char *)username, phoneNumber, address, itemCount, productIds, quantities, unitPrices, grandTotal, shippingFee, deliveryMethod, paymentMethod);
+
+            for (int i = 0; i < itemCount; i++) updateStockAfterPurchase(productIds[i], quantities[i]);
+            clearCart(username);
+            printf("\nOrder placed.\n");
+            printf("Press Enter to continue...");
+            while(getchar()!='\n'&&!feof(stdin)){}
             return;
         }
+        printf("Invalid choice\n");
+        printf("Press Enter to continue...");
+        while (getchar() != '\n' && !feof(stdin)) {}
     }
-
-    // Save order
-    int newOrderId = 0;
-
-    if (!placeOrder((char *)username,
-                    phoneNumber,
-                    address,
-                    itemCount,
-                    grandTotal,
-                    &newOrderId))
-    {
-        printf("Order failed. Cart has been preserved.\n");
-        return;
-    }
-
-    // Generate invoice with tracking number after order placed
-    generateInvoice(newOrderId,
-                    (char *)username,
-                    phoneNumber,
-                    address,
-                    itemCount,
-                    productIds,
-                    quantities,
-                    unitPrices,
-                    grandTotal,
-                    shippingFee,
-                    deliveryMethod,
-                    paymentMethod);
-
-    /*
-       Update stock.
-       NOTE: updateStockAfterPurchase() returns void,
-       so its success cannot currently be verified here.
-    */
-
-    for (int i = 0; i < itemCount; i++)
-    {
-        updateStockAfterPurchase(productIds[i],
-                                 quantities[i]);
-    }
-
-    // Clear customer's cart
-    clearCart(username);
-
-    printf("\nOrder processing finished.\n");
-    printf("Your cart has been cleared.\n");
-    printf("Use My Orders to view your order history.\n");
 }
-
 
 int getCustomerDetails(
     const char *username,

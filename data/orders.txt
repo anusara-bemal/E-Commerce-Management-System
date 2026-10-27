@@ -6,3 +6,4 @@
 6|admin|0768095591|akurugoda , kamburupitiya , matara|1|235.00|0
 7|admin|0771234567|Matara|1|550.00|0
 8|admin|0771234567|Matara|1|145.00|0
+9|admin|0771234567|Matara|1|145.00|0
