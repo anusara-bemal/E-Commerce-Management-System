@@ -1,0 +1,22 @@
+==============================================
+                      INVOICE                      
+==============================================
+Invoice No   : 6
+Date         : 27-10-2026 21:44
+Customer     : admin
+Phone        : 0768095591
+Address      : akurugoda , kamburupitiya , matara
+----------------------------------------------
+Product ID : 2
+Quantity   : 3
+Unit Price : Rs. 45.00
+Subtotal   : Rs. 135.00
+----------------------------------------------
+Subtotal     : Rs. 135.00
+Shipping     : Rs. 100.00
+Total        : Rs. 235.00
+Delivery     : STANDARD
+Payment      : CASH ON DELIVERY
+Tracking No  : TRK000006
+==============================================
+Thank you for your order!

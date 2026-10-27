@@ -518,7 +518,6 @@ printf("\n[OK] Order %d status updated to %s!\n",
 #define DELIVERY_EXPRESS  2
 
 #define PAYMENT_COD  1
-#define PAYMENT_CARD 2
 
 #define STANDARD_SHIPPING_FEE  100.0f
 #define EXPRESS_SHIPPING_FEE  250.0f
@@ -539,15 +538,8 @@ const char *deliveryMethodText(int deliveryMethod)
 
 const char *paymentMethodText(int paymentMethod)
 {
-    switch (paymentMethod)
-    {
-        case PAYMENT_CARD:
-            return "CARD";
-
-        case PAYMENT_COD:
-        default:
-            return "CASH ON DELIVERY";
-    }
+    (void)paymentMethod;
+    return "CASH ON DELIVERY";
 }
 
 float getDeliveryFee(int deliveryMethod, float subtotal)
@@ -615,21 +607,18 @@ int chooseDeliveryMethod(float subtotal)
     return choice;
 }
 
-// --------------------------------------------------
-// Checkout Step 2: Customer chooses payment method
-// --------------------------------------------------
+// Checkout Step 2: Payment - Always Cash on Delivery
 int choosePaymentMethod(void)
 {
     printf("\nPayment Options:\n");
     printf("1. Cash on Delivery (Pay when your order arrives)\n");
-    printf("2. Card Payment (Mock payment for this mini project)\n");
 
     int choice = 0;
     int valid = 0;
 
     while (valid == 0)
     {
-        printf("Enter your payment choice (1/2): ");
+        printf("Enter your payment choice (1): ");
 
         if (scanf("%d", &choice) != 1)
         {
@@ -646,13 +635,13 @@ int choosePaymentMethod(void)
         {
         }
 
-        if (choice == PAYMENT_COD || choice == PAYMENT_CARD)
+        if (choice == PAYMENT_COD)
         {
             valid = 1;
         }
         else
         {
-            printf("Invalid choice! Please select 1 or 2.\n");
+            printf("Invalid choice! Please select 1.\n");
         }
     }
 
@@ -661,7 +650,6 @@ int choosePaymentMethod(void)
 
 // --------------------------------------------------
 // Generate invoice after placing an order
-// Saves invoice file and prints it to the screen
 // --------------------------------------------------
 void generateInvoice(int orderId,
                      const char *username,
@@ -764,11 +752,9 @@ void generateInvoice(int orderId,
     printf("Thank you for your order!\n");
 }
 
-// --------------------------------------------------
-// Start checkout directly with a selected product
-// Used when customer chooses "Go to Checkout"
-// from product page instead of adding to cart
-// --------------------------------------------------
+
+
+//checkout directly
 static int pendingProductId = -1;
 static int pendingQuantity = 0;
 static float pendingUnitPrice = 0.0f;
@@ -907,7 +893,7 @@ void checkout(const char *username)
     }
     }
 
-    /* Validate stock */
+    //Validate stock
     for (int i = 0; i < itemCount; i++)
     {
         if (!checkStockAvailability(productIds[i],
@@ -919,7 +905,9 @@ void checkout(const char *username)
         }
     }
 
-    /* Calculate total */
+
+
+   //Calculate total
     order_process(quantities, itemCount,
                   unitPrices, &totalAmount);
 
@@ -943,25 +931,100 @@ void checkout(const char *username)
         printf("   Subtotal   : Rs. %.2f\n", quantities[i] * unitPrices[i]);
     }
 
-    // ---------- Checkout Step 1: Delivery ----------
+    // ---------- Checkout : Delivery ----------
     int deliveryMethod = chooseDeliveryMethod(totalAmount);
     float shippingFee = getDeliveryFee(deliveryMethod, totalAmount);
     float grandTotal = totalAmount + shippingFee;
 
-    // ---------- Checkout Step 2: Payment ----------
-    int paymentMethod = choosePaymentMethod();
-
     /* Retrieve registered customer details */
-    if (!getCustomerDetails(username,
-                            phoneNumber, sizeof(phoneNumber),
-                            address, sizeof(address)))
+    char savedPhone[30] = {0};
+    char savedAddress[200] = {0};
+    int hasSavedDetails = getCustomerDetails(username,
+                                             savedPhone, sizeof(savedPhone),
+                                             savedAddress, sizeof(savedAddress));
+
+    printf("\n========================================\n");
+    printf("           SHIPPING DETAILS            \n");
+    printf("========================================\n");
+
+    if (hasSavedDetails)
     {
-        printf("Unable to retrieve customer details.\n");
+        printf("Saved Phone   : %s\n", savedPhone);
+        printf("Saved Address : %s\n", savedAddress);
+        printf("\nUse saved shipping details?\n");
+        printf("1. Yes, use saved details\n");
+        printf("2. No, enter new shipping details\n");
+        printf("Enter choice (1/2): ");
+
+        int shipChoice = 0;
+        if (scanf("%d", &shipChoice) != 1)
+        {
+            while (getchar() != '\n' && !feof(stdin)) {}
+            shipChoice = 1;
+        }
+        while (getchar() != '\n' && !feof(stdin)) {}
+
+        if (shipChoice == 2)
+        {
+            printf("\nEnter new phone number: ");
+            if (scanf("%29s", phoneNumber) != 1)
+            {
+                while (getchar() != '\n' && !feof(stdin)) {}
+                if (hasSavedDetails) strcpy(phoneNumber, savedPhone);
+                else phoneNumber[0] = '\0';
+            }
+            while (getchar() != '\n' && !feof(stdin)) {}
+
+            printf("Enter new address: ");
+            if (scanf(" %199[^\n]", address) != 1)
+            {
+                while (getchar() != '\n' && !feof(stdin)) {}
+                if (hasSavedDetails) strcpy(address, savedAddress);
+                else address[0] = '\0';
+            }
+            while (getchar() != '\n' && !feof(stdin)) {}
+        }
+        else
+        {
+            strcpy(phoneNumber, savedPhone);
+            strcpy(address, savedAddress);
+        }
+    }
+    else
+    {
+        printf("No saved shipping details found.\n");
+        printf("\nEnter phone number: ");
+        if (scanf("%29s", phoneNumber) != 1)
+        {
+            while (getchar() != '\n' && !feof(stdin)) {}
+            phoneNumber[0] = '\0';
+        }
+        while (getchar() != '\n' && !feof(stdin)) {}
+
+        printf("Enter address: ");
+        if (scanf(" %199[^\n]", address) != 1)
+        {
+            while (getchar() != '\n' && !feof(stdin)) {}
+            address[0] = '\0';
+        }
+        while (getchar() != '\n' && !feof(stdin)) {}
+    }
+
+    if (phoneNumber[0] == '\0' || address[0] == '\0')
+    {
+        printf("Invalid shipping details.\n");
         return;
     }
 
-    printf("\nPhone   : %s\n", phoneNumber);
+    printf("\nShipping to:\n");
+    printf("Phone   : %s\n", phoneNumber);
     printf("Address : %s\n", address);
+
+    // ---------- Checkout : Payment ----------
+    int paymentMethod = choosePaymentMethod();
+
+
+
 
     // ---------- Show order summary ----------
     printf("\n========================================\n");
@@ -978,7 +1041,7 @@ void checkout(const char *username)
     printf("Payment  : %s\n", paymentMethodText(paymentMethod));
     printf("========================================\n");
 
-    /* Confirm order */
+    // Confirm order
     char confirmation;
 
     printf("\nConfirm order? (y/n): ");
@@ -1002,7 +1065,7 @@ void checkout(const char *username)
         return;
     }
 
-    /* Recheck stock */
+    // Recheck stock
     for (int i = 0; i < itemCount; i++)
     {
         if (!checkStockAvailability(productIds[i],
@@ -1013,7 +1076,7 @@ void checkout(const char *username)
         }
     }
 
-    /* Save order */
+    // Save order
     int newOrderId = 0;
 
     if (!placeOrder((char *)username,
@@ -1027,7 +1090,7 @@ void checkout(const char *username)
         return;
     }
 
-    /* Generate invoice with tracking number after order placed */
+    // Generate invoice with tracking number after order placed
     generateInvoice(newOrderId,
                     (char *)username,
                     phoneNumber,
@@ -1046,13 +1109,14 @@ void checkout(const char *username)
        NOTE: updateStockAfterPurchase() returns void,
        so its success cannot currently be verified here.
     */
+
     for (int i = 0; i < itemCount; i++)
     {
         updateStockAfterPurchase(productIds[i],
                                  quantities[i]);
     }
 
-    /* Clear customer's cart */
+    // Clear customer's cart
     clearCart(username);
 
     printf("\nOrder processing finished.\n");
