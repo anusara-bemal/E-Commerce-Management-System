@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stddef.h>
+#include <direct.h>
 #include <time.h>
 #include <sys/stat.h>
 #include "orders.h"
@@ -670,7 +671,11 @@ void generateInvoice(int orderId,
 
     sprintf(invoicePath, "%s/%s_%d.txt", invoiceDir, invoiceFileName, orderId);
 
-    mkdir(invoiceDir);
+#ifdef _WIN32
+    _mkdir(invoiceDir);
+#else
+    mkdir(invoiceDir, 0755);
+#endif
 
     FILE *file = fopen(invoicePath, "w");
 
