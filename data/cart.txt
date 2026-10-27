@@ -1,3 +1,1 @@
-admin|1|keyboard|25|2500.00|62500.00
-admin|1|key|2|25.00|50.00
-admin|2|mango|13|45.00|585.00
+admin|2|mango|1|45.00|45.00

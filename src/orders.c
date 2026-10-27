@@ -760,6 +760,27 @@ void generateInvoice(int orderId,
     printf("Thank you for your order!\n");
 }
 
+// --------------------------------------------------
+// Start checkout directly with a selected product
+// Used when customer chooses "Go to Checkout"
+// from product page instead of adding to cart
+// --------------------------------------------------
+static int pendingProductId = -1;
+static int pendingQuantity = 0;
+static float pendingUnitPrice = 0.0f;
+
+void startDirectCheckout(const char *username,
+                         int productId,
+                         int quantity,
+                         float unitPrice)
+{
+    pendingProductId = productId;
+    pendingQuantity = quantity;
+    pendingUnitPrice = unitPrice;
+
+    checkout(username);
+}
+
 void checkout(const char *username)
 {
     #define MAX_CHECKOUT_ITEMS 100
@@ -781,6 +802,15 @@ void checkout(const char *username)
         return;
     }
 
+    if (pendingProductId > 0)
+    {
+        productIds[0] = pendingProductId;
+        quantities[0] = pendingQuantity;
+        unitPrices[0] = pendingUnitPrice;
+        itemCount = 1;
+    }
+    else
+    {
     FILE *cartFile = fopen("data/cart.txt", "r");
 
     if (cartFile == NULL)
@@ -870,6 +900,7 @@ void checkout(const char *username)
     {
         printf("Your cart is empty.\n");
         return;
+    }
     }
 
     /* Validate stock */

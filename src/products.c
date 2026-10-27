@@ -423,7 +423,30 @@ void viewProductsAndAddToCart(const char *username)
     }
     else if (action == 2)
     {
-        checkout(username);
+        int quantity;
+
+        printf("Enter Quantity: ");
+
+        if (scanf("%d", &quantity) != 1 || quantity <= 0)
+        {
+            printf("Invalid quantity!\n");
+
+            while (getchar() != '\n' && !feof(stdin))
+                ;
+
+            return;
+        }
+
+        while (getchar() != '\n' && !feof(stdin))
+            ;
+
+        if (!checkStockAvailability(p.productId, quantity))
+        {
+            printf("Insufficient stock for Product ID %d.\n", p.productId);
+            return;
+        }
+
+        startDirectCheckout(username, p.productId, quantity, p.price);
     }
 }
 

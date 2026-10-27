@@ -42,6 +42,11 @@ void updateOrderStatus(void);
 
 void checkout(const char *username);
 
+void startDirectCheckout(const char *username,
+                         int productId,
+                         int quantity,
+                         float unitPrice);
+
 int getCustomerDetails(
     const char *username,
     char *phoneNumber,
