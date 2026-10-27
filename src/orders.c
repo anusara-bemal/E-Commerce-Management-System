@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stddef.h>
+#include <time.h>
+#include <sys/stat.h>
 #include "orders.h"
 #include "cart.h"
 #include "products.h"
@@ -135,7 +137,8 @@ int placeOrder(
     const char *phoneNumber,
     const char *address,
     int itemCount,
-    float totalAmount)
+    float totalAmount,
+    int *newOrderId)
 {
     if (username == NULL ||
         phoneNumber == NULL ||
@@ -174,6 +177,11 @@ int placeOrder(
     {
         printf("\n[Error] Could not generate an order ID!\n");
         return 0;
+    }
+
+    if (newOrderId != NULL)
+    {
+        *newOrderId = newId;
     }
 
     FILE *file = fopen(ORDERS_FILE, "a");
@@ -647,6 +655,111 @@ int choosePaymentMethod(void)
     return choice;
 }
 
+// --------------------------------------------------
+// Generate invoice after placing an order
+// Saves invoice file and prints it to the screen
+// --------------------------------------------------
+void generateInvoice(int orderId,
+                     const char *username,
+                     const char *phoneNumber,
+                     const char *address,
+                     int itemCount,
+                     const int *productIds,
+                     const int *quantities,
+                     const float *unitPrices,
+                     float totalAmount,
+                     float shippingFee,
+                     int deliveryMethod,
+                     int paymentMethod)
+{
+    const char *invoiceDir = "data/invoices";
+    const char *invoiceFileName = "invoice";
+    char invoicePath[300];
+
+    sprintf(invoicePath, "%s/%s_%d.txt", invoiceDir, invoiceFileName, orderId);
+
+    mkdir(invoiceDir);
+
+    FILE *file = fopen(invoicePath, "w");
+
+    if (file == NULL)
+    {
+        printf("\n[Error] Could not create invoice file!\n");
+        printf("Invoice path: %s\n", invoicePath);
+        return;
+    }
+
+    time_t now = time(NULL);
+    char dateStr[40];
+    strftime(dateStr, sizeof(dateStr), "%d-%m-%Y %H:%M", localtime(&now));
+
+    char trackingNumber[40];
+    sprintf(trackingNumber, "TRK%06d", orderId);
+
+    fprintf(file, "==============================================\n");
+    fprintf(file, "                      INVOICE                      \n");
+    fprintf(file, "==============================================\n");
+    fprintf(file, "Invoice No   : %d\n", orderId);
+    fprintf(file, "Date         : %s\n", dateStr);
+    fprintf(file, "Customer     : %s\n", username);
+    fprintf(file, "Phone        : %s\n", phoneNumber);
+    fprintf(file, "Address      : %s\n", address);
+    fprintf(file, "----------------------------------------------\n");
+
+    for (int i = 0; i < itemCount; i++)
+    {
+        float subtotal = quantities[i] * unitPrices[i];
+
+        fprintf(file, "Product ID : %d\n", productIds[i]);
+        fprintf(file, "Quantity   : %d\n", quantities[i]);
+        fprintf(file, "Unit Price : Rs. %.2f\n", unitPrices[i]);
+        fprintf(file, "Subtotal   : Rs. %.2f\n", subtotal);
+        fprintf(file, "----------------------------------------------\n");
+    }
+
+    fprintf(file, "Subtotal     : Rs. %.2f\n", totalAmount - shippingFee);
+    fprintf(file, "Shipping     : Rs. %.2f\n", shippingFee);
+    fprintf(file, "Total        : Rs. %.2f\n", totalAmount);
+    fprintf(file, "Delivery     : %s\n", deliveryMethodText(deliveryMethod));
+    fprintf(file, "Payment      : %s\n", paymentMethodText(paymentMethod));
+    fprintf(file, "Tracking No  : %s\n", trackingNumber);
+    fprintf(file, "==============================================\n");
+    fprintf(file, "Thank you for your order!\n");
+
+    fclose(file);
+
+    // Print the invoice to the screen
+    printf("\n==============================================\n");
+    printf("                      INVOICE                      \n");
+    printf("==============================================\n");
+    printf("Invoice No   : %d\n", orderId);
+    printf("Date         : %s\n", dateStr);
+    printf("Customer     : %s\n", username);
+    printf("Phone        : %s\n", phoneNumber);
+    printf("Address      : %s\n", address);
+    printf("----------------------------------------------\n");
+
+    for (int i = 0; i < itemCount; i++)
+    {
+        float subtotal = quantities[i] * unitPrices[i];
+
+        printf("Product ID : %d\n", productIds[i]);
+        printf("Quantity   : %d\n", quantities[i]);
+        printf("Unit Price : Rs. %.2f\n", unitPrices[i]);
+        printf("Subtotal   : Rs. %.2f\n", subtotal);
+        printf("----------------------------------------------\n");
+    }
+
+    printf("Subtotal     : Rs. %.2f\n", totalAmount - shippingFee);
+    printf("Shipping     : Rs. %.2f\n", shippingFee);
+    printf("Total        : Rs. %.2f\n", totalAmount);
+    printf("Delivery     : %s\n", deliveryMethodText(deliveryMethod));
+    printf("Payment      : %s\n", paymentMethodText(paymentMethod));
+    printf("Tracking No  : %s\n", trackingNumber);
+    printf("==============================================\n");
+    printf("Thank you for your order!\n");
+}
+
 void checkout(const char *username)
 {
     #define MAX_CHECKOUT_ITEMS 100
@@ -866,15 +979,32 @@ void checkout(const char *username)
     }
 
     /* Save order */
+    int newOrderId = 0;
+
     if (!placeOrder((char *)username,
                     phoneNumber,
                     address,
                     itemCount,
-                    grandTotal))
+                    grandTotal,
+                    &newOrderId))
     {
         printf("Order failed. Cart has been preserved.\n");
         return;
     }
+
+    /* Generate invoice with tracking number after order placed */
+    generateInvoice(newOrderId,
+                    (char *)username,
+                    phoneNumber,
+                    address,
+                    itemCount,
+                    productIds,
+                    quantities,
+                    unitPrices,
+                    grandTotal,
+                    shippingFee,
+                    deliveryMethod,
+                    paymentMethod);
 
     /*
        Update stock.

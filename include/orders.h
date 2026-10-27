@@ -17,7 +17,23 @@ int placeOrder(
     const char *phoneNumber,
     const char *address,
     int itemCount,
-    float totalAmount
+    float totalAmount,
+    int *newOrderId
+);
+
+void generateInvoice(
+    int orderId,
+    const char *username,
+    const char *phoneNumber,
+    const char *address,
+    int itemCount,
+    const int *productIds,
+    const int *quantities,
+    const float *unitPrices,
+    float totalAmount,
+    float shippingFee,
+    int deliveryMethod,
+    int paymentMethod
 );
 
 void myOrders(char username[]);

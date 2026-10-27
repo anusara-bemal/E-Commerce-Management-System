@@ -1,12 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include <errno.h>
 #include <limits.h>
 #include "models.h"
 #include "products.h"
 #include "ui.h"
 #include "cart.h"
+#include "orders.h"
 
 // Forward declarations - error එක නැති කරන්න
 
@@ -265,47 +267,164 @@ void viewProducts(void)
     fclose(file);
 }
 
+// Check product by ID or Name
+int productMatches(const Product *p, const char *keyword)
+{
+    int isNumber = 1;
+
+    for (int i = 0; keyword[i] != '\0'; i++)
+    {
+        if (keyword[i] < '0' || keyword[i] > '9')
+        {
+            isNumber = 0;
+            break;
+        }
+    }
+
+    if (isNumber)
+    {
+        return p->productId == atoi(keyword);
+    }
+
+    char lowerName[50];
+    char lowerKeyword[50];
+
+    strcpy(lowerName, p->productName);
+    strcpy(lowerKeyword, keyword);
+
+    for (int i = 0; lowerName[i] != '\0'; i++)
+    {
+        lowerName[i] = tolower((unsigned char)lowerName[i]);
+    }
+
+    for (int i = 0; lowerKeyword[i] != '\0'; i++)
+    {
+        lowerKeyword[i] = tolower((unsigned char)lowerKeyword[i]);
+    }
+
+    return strcmp(lowerName, lowerKeyword) == 0;
+}
+
 void viewProductsAndAddToCart(const char *username)
 {
-    int productId;
-    int quantity;
-    char choice;
-
     // Display available products
     viewProducts();
 
-    printf("\nDo you want to add a product to cart? (y/n): ");
-    if (scanf(" %c", &choice) != 1)
+    char keyword[50];
+    Product p;
+    int found = 0;
+
+    // Search by Product ID or Name
+    while (found == 0)
+    {
+        printf("\nEnter Product ID or Name to search: ");
+
+        if (fgets(keyword, sizeof(keyword), stdin) == NULL)
+        {
+            return;
+        }
+
+        keyword[strcspn(keyword, "\r\n")] = '\0';
+
+        found = 0;
+
+        FILE *file = fopen(PRODUCTS_FILE, "r");
+
+        if (file == NULL)
+        {
+            printf("No products available. Add products first.\n");
+            return;
+        }
+
+        char line[512];
+        Product temp;
+
+        while (fgets(line, sizeof(line), file) != NULL)
+        {
+            if (sscanf(line, "%d|%49[^|]|%29[^|]|%f|%d|%99[^\n]",
+                       &temp.productId,
+                       temp.productName,
+                       temp.category,
+                       &temp.price,
+                       &temp.stockQuantity,
+                       temp.description) == 6)
+            {
+                if (productMatches(&temp, keyword))
+                {
+                    p = temp;
+                    found = 1;
+                    break;
+                }
+            }
+        }
+
+        fclose(file);
+
+        if (found == 0)
+        {
+            printf("Product not found! Please try again.\n");
+        }
+    }
+
+    printf("\n--- Product Found! ---\n");
+    printf("ID          : %d\n", p.productId);
+    printf("Name        : %s\n", p.productName);
+    printf("Category    : %s\n", p.category);
+    printf("Price       : %.2f\n", p.price);
+    printf("Stock       : %d\n", p.stockQuantity);
+    printf("Description : %s\n", p.description);
+
+    // Ask: Add to Cart or Go to Checkout
+    int action;
+
+    printf("\n1. Add to Cart\n");
+    printf("2. Go to Checkout\n");
+    printf("0. Back to Products\n");
+    printf("Enter your choice: ");
+
+    if (scanf("%d", &action) != 1)
     {
         while (getchar() != '\n' && !feof(stdin))
             ;
+
         return;
     }
 
-    if (choice != 'y' && choice != 'Y')
-    {
-        return;
-    }
+    while (getchar() != '\n' && !feof(stdin))
+        ;
 
-    printf("Enter Product ID: ");
-    if (scanf("%d", &productId) != 1)
+    if (action == 1)
     {
-        printf("Invalid Product ID!\n");
+        int quantity;
+
+        printf("Enter Quantity: ");
+
+        if (scanf("%d", &quantity) != 1 || quantity <= 0)
+        {
+            printf("Invalid quantity!\n");
+
+            while (getchar() != '\n' && !feof(stdin))
+                ;
+
+            return;
+        }
+
         while (getchar() != '\n' && !feof(stdin))
             ;
-        return;
-    }
 
-    printf("Enter Quantity: ");
-    if (scanf("%d", &quantity) != 1 || quantity <= 0)
+        if (!checkStockAvailability(p.productId, quantity))
+        {
+            printf("Insufficient stock for Product ID %d.\n", p.productId);
+            return;
+        }
+
+        addToCart(username, p.productId, quantity);
+        viewCart(username);
+    }
+    else if (action == 2)
     {
-        printf("Invalid quantity!\n");
-        while (getchar() != '\n' && !feof(stdin))
-            ;
-        return;
+        checkout(username);
     }
-
-    addToCart(username, productId, quantity);
 }
 
 void searchProduct(void)
