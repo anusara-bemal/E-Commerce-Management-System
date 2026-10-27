@@ -2,9 +2,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stddef.h>
+#ifdef _WIN32
 #include <direct.h>
-#include <time.h>
+#else
 #include <sys/stat.h>
+#endif
+#include <time.h>
 #include "orders.h"
 #include "cart.h"
 #include "products.h"
