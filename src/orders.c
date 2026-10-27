@@ -7,6 +7,7 @@
 #include "orders.h"
 #include "cart.h"
 #include "products.h"
+#include "ui.h"
 
 #define ORDERS_FILE "data/orders.txt"
 #define TEMP_ORDERS_FILE "data/temp_orders.txt"
@@ -239,6 +240,9 @@ if (username == NULL || username[0] == '\0')
 printf("\n[Error] Invalid username!\n");
 return;
 }
+
+clearScreen();
+drawHeader("MY ORDERS");
 
 
 FILE *file = fopen(ORDERS_FILE, "r");
@@ -925,9 +929,8 @@ void checkout(const char *username)
         return;
     }
 
-    printf("\n========================================\n");
-    printf("               CHECKOUT               \n");
-    printf("========================================\n");
+    clearScreen();
+    drawHeader("CHECKOUT");
     printf("Customer : %s\n", username);
     printf("Items    : %d\n", itemCount);
 
@@ -973,6 +976,7 @@ void checkout(const char *username)
     printf("Total    : Rs. %.2f\n", grandTotal);
     printf("Delivery : %s\n", deliveryMethodText(deliveryMethod));
     printf("Payment  : %s\n", paymentMethodText(paymentMethod));
+    printf("========================================\n");
 
     /* Confirm order */
     char confirmation;
