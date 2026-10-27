@@ -1,0 +1,22 @@
+==============================================
+                      INVOICE                      
+==============================================
+Invoice No   : 8
+Date         : 27-10-2026 21:52
+Customer     : admin
+Phone        : 0771234567
+Address      : Matara
+----------------------------------------------
+Product ID : 2
+Quantity   : 1
+Unit Price : Rs. 45.00
+Subtotal   : Rs. 45.00
+----------------------------------------------
+Subtotal     : Rs. 45.00
+Shipping     : Rs. 100.00
+Total        : Rs. 145.00
+Delivery     : STANDARD
+Payment      : CASH ON DELIVERY
+Tracking No  : TRK000008
+==============================================
+Thank you for your order!

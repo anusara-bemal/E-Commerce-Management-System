@@ -4,3 +4,5 @@
 4|lahiru|0764990157|dambulla|1|900.00|0
 5|lahiru|0764990157|dambulla|1|1125.00|0
 6|admin|0768095591|akurugoda , kamburupitiya , matara|1|235.00|0
+7|admin|0771234567|Matara|1|550.00|0
+8|admin|0771234567|Matara|1|145.00|0
