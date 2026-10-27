@@ -214,7 +214,7 @@ void showInstructions(void)
     drawHeader("INSTRUCTIONS");
     printf("\n  1. Use numbers to navigate\n");
     printf("  2. Login to buy products\n");
-    printf("  3. Cart -> Orders flow\n");
+    printf("  3. Cart -> Checkout -> Order flow\n");
     printf("  4. Admin: 99\n");
     printf("\nPress Enter to go back...");
     getchar();

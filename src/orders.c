@@ -499,6 +499,154 @@ printf("\n[OK] Order %d status updated to %s!\n",
 
 }
 
+// --------------------------------------------------
+// Delivery options and payment options
+// --------------------------------------------------
+#define DELIVERY_STANDARD 1
+#define DELIVERY_EXPRESS  2
+
+#define PAYMENT_COD  1
+#define PAYMENT_CARD 2
+
+#define STANDARD_SHIPPING_FEE  100.0f
+#define EXPRESS_SHIPPING_FEE  250.0f
+#define FREE_SHIPPING_OVER     500.0f
+
+const char *deliveryMethodText(int deliveryMethod)
+{
+    switch (deliveryMethod)
+    {
+        case DELIVERY_EXPRESS:
+            return "EXPRESS";
+
+        case DELIVERY_STANDARD:
+        default:
+            return "STANDARD";
+    }
+}
+
+const char *paymentMethodText(int paymentMethod)
+{
+    switch (paymentMethod)
+    {
+        case PAYMENT_CARD:
+            return "CARD";
+
+        case PAYMENT_COD:
+        default:
+            return "CASH ON DELIVERY";
+    }
+}
+
+float getDeliveryFee(int deliveryMethod, float subtotal)
+{
+    if (deliveryMethod == DELIVERY_EXPRESS)
+    {
+        return EXPRESS_SHIPPING_FEE;
+    }
+
+    // Free standard shipping for orders over Rs. 500/-
+    if (subtotal >= FREE_SHIPPING_OVER)
+    {
+        return 0.0f;
+    }
+
+    return STANDARD_SHIPPING_FEE;
+}
+
+// --------------------------------------------------
+// Checkout Step 1: Customer chooses delivery method
+// --------------------------------------------------
+int chooseDeliveryMethod(float subtotal)
+{
+    printf("\nDelivery Options:\n");
+    printf("1. Standard Shipping - Rs. %.2f (Delivery in 5-8 days)\n", STANDARD_SHIPPING_FEE);
+    printf("2. Express Shipping - Rs. %.2f (Delivery in 2-4 days)\n", EXPRESS_SHIPPING_FEE);
+
+    if (subtotal >= FREE_SHIPPING_OVER)
+    {
+        printf("Free Standard Shipping is available for orders over Rs. %.2f!\n", FREE_SHIPPING_OVER);
+    }
+
+    int choice = 0;
+    int valid = 0;
+
+    while (valid == 0)
+    {
+        printf("Enter your delivery choice (1/2): ");
+
+        if (scanf("%d", &choice) != 1)
+        {
+            printf("Invalid input!\n");
+
+            while (getchar() != '\n' && !feof(stdin))
+            {
+            }
+
+            choice = 0;
+        }
+
+        while (getchar() != '\n' && !feof(stdin))
+        {
+        }
+
+        if (choice == DELIVERY_STANDARD || choice == DELIVERY_EXPRESS)
+        {
+            valid = 1;
+        }
+        else
+        {
+            printf("Invalid choice! Please select 1 or 2.\n");
+        }
+    }
+
+    return choice;
+}
+
+// --------------------------------------------------
+// Checkout Step 2: Customer chooses payment method
+// --------------------------------------------------
+int choosePaymentMethod(void)
+{
+    printf("\nPayment Options:\n");
+    printf("1. Cash on Delivery (Pay when your order arrives)\n");
+    printf("2. Card Payment (Mock payment for this mini project)\n");
+
+    int choice = 0;
+    int valid = 0;
+
+    while (valid == 0)
+    {
+        printf("Enter your payment choice (1/2): ");
+
+        if (scanf("%d", &choice) != 1)
+        {
+            printf("Invalid input!\n");
+
+            while (getchar() != '\n' && !feof(stdin))
+            {
+            }
+
+            choice = 0;
+        }
+
+        while (getchar() != '\n' && !feof(stdin))
+        {
+        }
+
+        if (choice == PAYMENT_COD || choice == PAYMENT_CARD)
+        {
+            valid = 1;
+        }
+        else
+        {
+            printf("Invalid choice! Please select 1 or 2.\n");
+        }
+    }
+
+    return choice;
+}
+
 void checkout(const char *username)
 {
     #define MAX_CHECKOUT_ITEMS 100
@@ -634,11 +782,27 @@ void checkout(const char *username)
     }
 
     printf("\n========================================\n");
-    printf("                CHECKOUT                \n");
+    printf("               CHECKOUT               \n");
     printf("========================================\n");
     printf("Customer : %s\n", username);
-    printf("Products : %d\n", itemCount);
-    printf("Total    : Rs. %.2f\n", totalAmount);
+    printf("Items    : %d\n", itemCount);
+
+    printf("\nCart Items:\n");
+    for (int i = 0; i < itemCount; i++)
+    {
+        printf("%d. Product ID : %d\n", i + 1, productIds[i]);
+        printf("   Quantity   : %d\n", quantities[i]);
+        printf("   Unit Price : Rs. %.2f\n", unitPrices[i]);
+        printf("   Subtotal   : Rs. %.2f\n", quantities[i] * unitPrices[i]);
+    }
+
+    // ---------- Checkout Step 1: Delivery ----------
+    int deliveryMethod = chooseDeliveryMethod(totalAmount);
+    float shippingFee = getDeliveryFee(deliveryMethod, totalAmount);
+    float grandTotal = totalAmount + shippingFee;
+
+    // ---------- Checkout Step 2: Payment ----------
+    int paymentMethod = choosePaymentMethod();
 
     /* Retrieve registered customer details */
     if (!getCustomerDetails(username,
@@ -651,6 +815,20 @@ void checkout(const char *username)
 
     printf("\nPhone   : %s\n", phoneNumber);
     printf("Address : %s\n", address);
+
+    // ---------- Show order summary ----------
+    printf("\n========================================\n");
+    printf("           ORDER SUMMARY            \n");
+    printf("========================================\n");
+    printf("Customer : %s\n", username);
+    printf("Phone    : %s\n", phoneNumber);
+    printf("Address  : %s\n", address);
+    printf("\nItems    : %d\n", itemCount);
+    printf("Subtotal : Rs. %.2f\n", totalAmount);
+    printf("Shipping : Rs. %.2f\n", shippingFee);
+    printf("Total    : Rs. %.2f\n", grandTotal);
+    printf("Delivery : %s\n", deliveryMethodText(deliveryMethod));
+    printf("Payment  : %s\n", paymentMethodText(paymentMethod));
 
     /* Confirm order */
     char confirmation;
@@ -692,7 +870,7 @@ void checkout(const char *username)
                     phoneNumber,
                     address,
                     itemCount,
-                    totalAmount))
+                    grandTotal))
     {
         printf("Order failed. Cart has been preserved.\n");
         return;
