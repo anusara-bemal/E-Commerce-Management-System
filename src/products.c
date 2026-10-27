@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
+#include <limits.h>
 #include "models.h"
 #include "products.h"
 #include "ui.h"
@@ -62,6 +64,58 @@ void productMenu(void)
     } while (choice != 6);
 }
 
+int getNextProductId(void)
+{
+    FILE *file = fopen(PRODUCTS_FILE, "r");
+    int highestProductId = 0;
+    char line[512];
+
+    if (file == NULL)
+    {
+        if (errno == ENOENT)
+        {
+            return 1;
+        }
+
+        printf("Error opening products file while generating Product ID!\n");
+        return -1;
+    }
+
+    while (fgets(line, sizeof(line), file) != NULL)
+    {
+        Product product;
+
+        if (sscanf(line, "%d|%49[^|]|%29[^|]|%f|%d|%99[^\n]",
+                   &product.productId,
+                   product.productName,
+                   product.category,
+                   &product.price,
+                   &product.stockQuantity,
+                   product.description) == 6 &&
+            product.productId > highestProductId)
+        {
+            highestProductId = product.productId;
+        }
+    }
+
+    if (ferror(file))
+    {
+        printf("Error reading products file while generating Product ID!\n");
+        fclose(file);
+        return -1;
+    }
+
+    fclose(file);
+
+    if (highestProductId == INT_MAX)
+    {
+        printf("Unable to generate Product ID: maximum ID reached.\n");
+        return -1;
+    }
+
+    return highestProductId + 1;
+}
+
 void addProduct(void)
 {
     FILE *file = fopen(PRODUCTS_FILE, "a");
@@ -76,16 +130,13 @@ void addProduct(void)
 
     printf("\n--- Add New Product ---\n");
 
-    printf("Enter Product ID: ");
-    if (scanf("%d", &p.productId) != 1)
+    p.productId = getNextProductId();
+    if (p.productId < 1)
     {
-        printf("Invalid Product ID!\n");
-        while (getchar() != '\n' && !feof(stdin))
-            ;
         fclose(file);
         return;
     }
-    getchar();
+    printf("Generated Product ID: %d\n", p.productId);
 
     printf("Enter Product Name: ");
     if (fgets(p.productName, sizeof(p.productName), stdin) == NULL)

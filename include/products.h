@@ -5,6 +5,7 @@
 
 void productMenu(void);
 
+int getNextProductId(void);
 void addProduct(void);
 void viewProducts(void);
 void searchProduct(void);
