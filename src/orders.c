@@ -22,10 +22,9 @@
 #define STATUS_PAID    1
 #define STATUS_SHIPPED 2
 
-// --------------------------------------------------
+
+
 // Calculate total price
-// cartItem contains quantities, not product IDs.
-// --------------------------------------------------
 void order_process(const int *cartItem, int quantity,
 float *unitPrice, float *totalPrice)
 {
@@ -53,9 +52,9 @@ for (int i = 0; i < quantity; i++)
 
 }
 
-// --------------------------------------------------
+
+
 // Convert status number to text
-// --------------------------------------------------
 const char *statusToText(int status)
 {
 switch (status)
@@ -77,18 +76,16 @@ return "PENDING";
 
 }
 
-// --------------------------------------------------
-// Generate next order ID
-// Uses the largest existing ID + 1.
-// --------------------------------------------------
 
+
+// Generate next order ID
 static int generateOrderId(void)
 {
     FILE *file = fopen(ORDERS_FILE, "r");
 
     if (file == NULL)
     {
-        /* Create the first order only if the file does not exist. */
+        
         file = fopen(ORDERS_FILE, "a");
 
         if (file == NULL)
@@ -133,10 +130,8 @@ static int generateOrderId(void)
 }
 
 
-// --------------------------------------------------
-// Place order
-// --------------------------------------------------
 
+// Place order
 int placeOrder(
     const char *username,
     const char *phoneNumber,
@@ -220,23 +215,12 @@ int placeOrder(
         return 0;
     }
 
-    printf("\n================================\n");
-    printf("          ORDER PLACED!\n");
-    printf("================================\n");
-    printf("Order ID : %d\n", newId);
-    printf("Customer : %s\n", username);
-    printf("Items    : %d\n", itemCount);
-    printf("Total    : Rs. %.2f\n", totalAmount);
-    printf("Status   : %s\n", statusToText(STATUS_PENDING));
-    printf("================================\n");
-
     return 1;
 }
 
 
-// --------------------------------------------------
+
 // View orders belonging to a customer
-// --------------------------------------------------
 void myOrders(char username[])
 {
 if (username == NULL || username[0] == '\0')
@@ -305,9 +289,13 @@ printf("============================================\n");
 
 }
 
-// --------------------------------------------------
+
+
+
+
+
+
 // Admin: view all orders
-// --------------------------------------------------
 void updateOrderStatus(void)
 {
 FILE *file = fopen(ORDERS_FILE, "r");
@@ -449,7 +437,7 @@ while (fgets(line, sizeof(line), oldFile) != NULL)
 
     if (fields != 7)
     {
-        // Preserve malformed records instead of silently deleting them.
+        // Log the malformed line for debugging purposes.
         if (fputs(line, tempFile) == EOF)
             writeError = 1;
 
@@ -494,6 +482,9 @@ if (!orderFound)
     return;
 }
 
+
+
+
 // Replace the original file only after successful processing.
 if (remove(ORDERS_FILE) != 0)
 {
@@ -515,9 +506,9 @@ printf("\n[OK] Order %d status updated to %s!\n",
 
 }
 
-// --------------------------------------------------
+
+
 // Delivery options and payment options
-// --------------------------------------------------
 #define DELIVERY_STANDARD 1
 #define DELIVERY_EXPRESS  2
 
@@ -553,7 +544,7 @@ float getDeliveryFee(int deliveryMethod, float subtotal)
         return EXPRESS_SHIPPING_FEE;
     }
 
-    // Free standard shipping for orders over Rs. 500/-
+    // Free standard shipping for orders over 500
     if (subtotal >= FREE_SHIPPING_OVER)
     {
         return 0.0f;
@@ -562,9 +553,7 @@ float getDeliveryFee(int deliveryMethod, float subtotal)
     return STANDARD_SHIPPING_FEE;
 }
 
-// --------------------------------------------------
-// Checkout Step 1: Customer chooses delivery method
-// --------------------------------------------------
+// Checkout : Customer chooses delivery method
 int chooseDeliveryMethod(float subtotal)
 {
     printf("\nDelivery Options:\n");
@@ -611,7 +600,7 @@ int chooseDeliveryMethod(float subtotal)
     return choice;
 }
 
-// Checkout Step 2: Payment - Always Cash on Delivery
+// Checkout : Payment - Cash on Delivery ( welawak tibbot witarak psse fake card payment ekk add krnnm )
 int choosePaymentMethod(void)
 {
     printf("\nPayment Options:\n");
@@ -652,9 +641,9 @@ int choosePaymentMethod(void)
     return choice;
 }
 
-// --------------------------------------------------
+
+
 // Generate invoice after placing an order
-// --------------------------------------------------
 void generateInvoice(int orderId,
                      const char *username,
                      const char *phoneNumber,
@@ -696,68 +685,67 @@ void generateInvoice(int orderId,
     char trackingNumber[40];
     sprintf(trackingNumber, "TRK%06d", orderId);
 
-    fprintf(file, "==============================================\n");
-    fprintf(file, "                      INVOICE                      \n");
-    fprintf(file, "==============================================\n");
-    fprintf(file, "Invoice No   : %d\n", orderId);
-    fprintf(file, "Date         : %s\n", dateStr);
-    fprintf(file, "Customer     : %s\n", username);
-    fprintf(file, "Phone        : %s\n", phoneNumber);
-    fprintf(file, "Address      : %s\n", address);
-    fprintf(file, "----------------------------------------------\n");
-
+    /* --- Save to file --- */
+    fprintf(file, "================================================\n");
+    fprintf(file, "                   INVOICE\n");
+    fprintf(file, "================================================\n");
+    fprintf(file, " Invoice  : #%d\n", orderId);
+    fprintf(file, " Date     : %s\n", dateStr);
+    fprintf(file, " Tracking : %s\n", trackingNumber);
+    fprintf(file, "------------------------------------------------\n");
+    fprintf(file, " Customer : %s\n", username);
+    fprintf(file, " Phone    : %s\n", phoneNumber);
+    fprintf(file, " Address  : %s\n", address);
+    fprintf(file, "------------------------------------------------\n");
     for (int i = 0; i < itemCount; i++)
     {
-        float subtotal = quantities[i] * unitPrices[i];
-
-        fprintf(file, "Product ID : %d\n", productIds[i]);
-        fprintf(file, "Quantity   : %d\n", quantities[i]);
-        fprintf(file, "Unit Price : Rs. %.2f\n", unitPrices[i]);
-        fprintf(file, "Subtotal   : Rs. %.2f\n", subtotal);
-        fprintf(file, "----------------------------------------------\n");
+        float invSubF = quantities[i] * unitPrices[i];
+        fprintf(file, " #%-4d : %dx Rs.%.2f = Rs.%.2f\n",
+                productIds[i], quantities[i], unitPrices[i], invSubF);
     }
-
-    fprintf(file, "Subtotal     : Rs. %.2f\n", totalAmount - shippingFee);
-    fprintf(file, "Shipping     : Rs. %.2f\n", shippingFee);
-    fprintf(file, "Total        : Rs. %.2f\n", totalAmount);
-    fprintf(file, "Delivery     : %s\n", deliveryMethodText(deliveryMethod));
-    fprintf(file, "Payment      : %s\n", paymentMethodText(paymentMethod));
-    fprintf(file, "Tracking No  : %s\n", trackingNumber);
-    fprintf(file, "==============================================\n");
-    fprintf(file, "Thank you for your order!\n");
-
+    fprintf(file, "------------------------------------------------\n");
+    fprintf(file, " Subtotal : Rs. %.2f\n", totalAmount - shippingFee);
+    fprintf(file, " Shipping : Rs. %.2f\n", shippingFee);
+    fprintf(file, " TOTAL    : Rs. %.2f\n", totalAmount);
+    fprintf(file, " Delivery : %s\n", deliveryMethodText(deliveryMethod));
+    fprintf(file, " Payment  : %s\n", paymentMethodText(paymentMethod));
+    fprintf(file, "================================================\n");
+    fprintf(file, "      Thank you for shopping with us!\n");
+    fprintf(file, "================================================\n");
     fclose(file);
 
-    // Print the invoice to the screen
-    printf("\n==============================================\n");
-    printf("                      INVOICE                      \n");
-    printf("==============================================\n");
-    printf("Invoice No   : %d\n", orderId);
-    printf("Date         : %s\n", dateStr);
-    printf("Customer     : %s\n", username);
-    printf("Phone        : %s\n", phoneNumber);
-    printf("Address      : %s\n", address);
-    printf("----------------------------------------------\n");
-
+    /* --- Screen confirmation box --- */
+    printf("\x1b[36m\xe2\x95\x94\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x97\x1b[0m\n");
+    printf("\x1b[36m\xe2\x95\x91\x1b[0m  \x1b[1;32m   ORDER CONFIRMED  \xe2\x9c\x93                       \x1b[0m\x1b[36m\xe2\x95\x91\x1b[0m\n");
+    printf("\x1b[36m\xe2\x95\xa0\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\xa3\x1b[0m\n");
+    printf("\x1b[36m\xe2\x95\x91\x1b[0m  Invoice  : \x1b[1m#%-33d\x1b[0m\x1b[36m\xe2\x95\x91\x1b[0m\n", orderId);
+    printf("\x1b[36m\xe2\x95\x91\x1b[0m  Date     : %-33s\x1b[36m\xe2\x95\x91\x1b[0m\n", dateStr);
+    printf("\x1b[36m\xe2\x95\x91\x1b[0m  Tracking : \x1b[33m%-33s\x1b[0m\x1b[36m\xe2\x95\x91\x1b[0m\n", trackingNumber);
+    printf("\x1b[36m\xe2\x95\xa0\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\xa3\x1b[0m\n");
+    printf("\x1b[36m\xe2\x95\x91\x1b[0m  Customer : %-33s\x1b[36m\xe2\x95\x91\x1b[0m\n", username);
+    printf("\x1b[36m\xe2\x95\x91\x1b[0m  Phone    : %-33s\x1b[36m\xe2\x95\x91\x1b[0m\n", phoneNumber);
+    printf("\x1b[36m\xe2\x95\x91\x1b[0m  Address  : %-33.33s\x1b[36m\xe2\x95\x91\x1b[0m\n", address);
+    printf("\x1b[36m\xe2\x95\xa0\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\xa3\x1b[0m\n");
     for (int i = 0; i < itemCount; i++)
     {
-        float subtotal = quantities[i] * unitPrices[i];
-
-        printf("Product ID : %d\n", productIds[i]);
-        printf("Quantity   : %d\n", quantities[i]);
-        printf("Unit Price : Rs. %.2f\n", unitPrices[i]);
-        printf("Subtotal   : Rs. %.2f\n", subtotal);
-        printf("----------------------------------------------\n");
+        float invSub2 = quantities[i] * unitPrices[i];
+        char invPid[12];
+        sprintf(invPid, "#%d", productIds[i]);
+        printf("\x1b[36m\xe2\x95\x91\x1b[0m  %-6s  x%-3d  @ Rs.%-7.2f = Rs.%-7.2f   \x1b[36m\xe2\x95\x91\x1b[0m\n",
+               invPid, quantities[i], unitPrices[i], invSub2);
     }
-
-    printf("Subtotal     : Rs. %.2f\n", totalAmount - shippingFee);
-    printf("Shipping     : Rs. %.2f\n", shippingFee);
-    printf("Total        : Rs. %.2f\n", totalAmount);
-    printf("Delivery     : %s\n", deliveryMethodText(deliveryMethod));
-    printf("Payment      : %s\n", paymentMethodText(paymentMethod));
-    printf("Tracking No  : %s\n", trackingNumber);
-    printf("==============================================\n");
-    printf("Thank you for your order!\n");
+    printf("\x1b[36m\xe2\x95\xa0\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\xa3\x1b[0m\n");
+    printf("\x1b[36m\xe2\x95\x91\x1b[0m  Subtotal  : Rs. %-27.2f \x1b[36m\xe2\x95\x91\x1b[0m\n", totalAmount - shippingFee);
+    if (shippingFee > 0.0f)
+        printf("\x1b[36m\xe2\x95\x91\x1b[0m  Shipping  : Rs. %-27.2f \x1b[36m\xe2\x95\x91\x1b[0m\n", shippingFee);
+    else
+        printf("\x1b[36m\xe2\x95\x91\x1b[0m  Shipping  : \x1b[32mFREE%-30s\x1b[0m\x1b[36m\xe2\x95\x91\x1b[0m\n", "");
+    printf("\x1b[36m\xe2\x95\x91\x1b[0m  \x1b[1mTotal\x1b[0m     : \x1b[1mRs. %-27.2f\x1b[0m \x1b[36m\xe2\x95\x91\x1b[0m\n", totalAmount);
+    printf("\x1b[36m\xe2\x95\x91\x1b[0m  Delivery  : %-33s\x1b[36m\xe2\x95\x91\x1b[0m\n", deliveryMethodText(deliveryMethod));
+    printf("\x1b[36m\xe2\x95\x91\x1b[0m  Payment   : %-33s\x1b[36m\xe2\x95\x91\x1b[0m\n", paymentMethodText(paymentMethod));
+    printf("\x1b[36m\xe2\x95\xa0\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\xa3\x1b[0m\n");
+    printf("\x1b[36m\xe2\x95\x91\x1b[0m  \x1b[32m      Thank you for shopping with us!          \x1b[0m\x1b[36m\xe2\x95\x91\x1b[0m\n");
+    printf("\x1b[36m\xe2\x95\x9a\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x9d\x1b[0m\n");
 }
 
 
@@ -925,19 +913,6 @@ void checkout(const char *username)
         return;
     }
 
-    clearScreen();
-    drawHeader("CHECKOUT");
-    printf("Customer : %s\n", username);
-    printf("Items    : %d\n\n", itemCount);
-
-    for (int i = 0; i < itemCount; i++)
-    {
-        printf("%d. Product ID : %d | Qty : %d | Unit : Rs. %.2f | Subtotal : Rs. %.2f\n",
-               i + 1, productIds[i], quantities[i], unitPrices[i], quantities[i] * unitPrices[i]);
-    }
-    printf("\n----------------------------------------\n");
-    printf("Subtotal : Rs. %.2f\n", totalAmount);
-
     int step = 1;
     int deliveryMethod = 1;
     float shippingFee = 0.0f;
@@ -956,8 +931,8 @@ void checkout(const char *username)
     {
         clearScreen();
         drawHeader("CHECKOUT");
-        printf("Customer : %s | Subtotal : Rs. %.2f\n\n", username, totalAmount);
-        printf("[STEP 1] DELIVERY\n\n");
+        printf("\x1b[2m  Cart total: Rs. %.2f\x1b[0m\n\n", totalAmount);
+        printf("DELIVERY METHOD\n\n");
         printf("1. Standard Shipping - Rs. %.2f (5-8 days)\n", STANDARD_SHIPPING_FEE);
         printf("2. Express Shipping - Rs. %.2f (2-4 days)\n", EXPRESS_SHIPPING_FEE);
         if (totalAmount >= FREE_SHIPPING_OVER)
@@ -991,8 +966,8 @@ void checkout(const char *username)
     {
         clearScreen();
         drawHeader("CHECKOUT");
-        printf("Customer : %s | Subtotal : Rs. %.2f | Shipping : Rs. %.2f | Total : Rs. %.2f\n\n", username, totalAmount, shippingFee, grandTotal);
-        printf("[STEP 2] SHIPPING DETAILS\n\n");
+        printf("\x1b[2m  Subtotal: Rs. %.2f  |  Shipping: Rs. %.2f  |  Total: Rs. %.2f\x1b[0m\n\n", totalAmount, shippingFee, grandTotal);
+        printf("SHIPPING DETAILS\n\n");
         if (hasSavedDetails)
         {
             printf("Saved Phone   : %s\n", savedPhone);
@@ -1059,8 +1034,8 @@ void checkout(const char *username)
     {
         clearScreen();
         drawHeader("CHECKOUT");
-        printf("Customer : %s | Total : Rs. %.2f\n\n", username, grandTotal);
-        printf("[STEP 3] PAYMENT\n\n");
+        printf("\x1b[2m  Grand Total: Rs. %.2f\x1b[0m\n\n", grandTotal);
+        printf("PAYMENT METHOD\n\n");
         printf("1. Cash on Delivery (Pay on delivery)\n");
         printf("\n0. Back\n");
         printf("Select: ");
@@ -1073,7 +1048,7 @@ void checkout(const char *username)
             int paymentMethod = PAYMENT_COD;
             clearScreen();
             drawHeader("CHECKOUT");
-            printf("ORDER SUMMARY\n\n");
+            printf("\n\x1b[1mORDER SUMMARY\x1b[0m\n\n");
             printf("Customer : %s\n", username);
             printf("Phone    : %s\n", phoneNumber);
             printf("Address  : %s\n\n", address);
@@ -1101,7 +1076,7 @@ void checkout(const char *username)
 
             for (int i = 0; i < itemCount; i++) updateStockAfterPurchase(productIds[i], quantities[i]);
             clearCart(username);
-            printf("\nOrder placed.\n");
+            printf("\n");
             printf("Press Enter to continue...");
             while(getchar()!='\n'&&!feof(stdin)){}
             return;
