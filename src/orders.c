@@ -573,7 +573,7 @@ int chooseDeliveryMethod(float subtotal)
 
     if (subtotal >= FREE_SHIPPING_OVER)
     {
-        printf("Free Standard Shipping is available for orders over Rs. %.2f!\n", FREE_SHIPPING_OVER);
+
     }
 
     int choice = 0;
@@ -961,7 +961,7 @@ void checkout(const char *username)
         printf("1. Standard Shipping - Rs. %.2f (5-8 days)\n", STANDARD_SHIPPING_FEE);
         printf("2. Express Shipping - Rs. %.2f (2-4 days)\n", EXPRESS_SHIPPING_FEE);
         if (totalAmount >= FREE_SHIPPING_OVER)
-            printf("(Free Standard over Rs. %.2f)\n", FREE_SHIPPING_OVER);
+    
         printf("\n0. Back\n");
         printf("Select: ");
 
