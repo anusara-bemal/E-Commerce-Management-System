@@ -1,1 +1,100 @@
-2|mango|tech|45.00|35|hi
+1|Sony Headphones Deluxe 4606|Electronics|4620.00|347|Popular choice among customers, ships with 1 year warranty. Color: silver.
+2|Dell Laptop Lite 3682|Computers|66065.00|366|Ideal gift option, available in several colors. Color: red.
+3|Vivo Tripod Pro 2715|Mobiles|36805.50|111|High quality product with excellent reviews. Color: white.
+4|Odel Jeans Lite 5981|Fashion|3680.50|374|Energy efficient and built to last. Color: white.
+5|Abans Vacuum Flask Eco 4903|Home|8240.50|361|Popular choice among customers, ships with 1 year warranty. Color: black.
+6|Ceylon Tea Basmati Rice 5kg Lite 3914|Grocery|595.99|326|High quality product with excellent reviews. Color: blue.
+7|Maybelline Hair Oil Plus 4474|Beauty|1310.00|88|Brand new, sealed in original packaging. Color: blue.
+8|Vijitha Yapa Notebook A4 Mini 9225|Books|365.50|398|Durable build and great value for money. Color: red.
+9|Slazenger Cricket Bat Classic 4486|Sports|4015.50|256|Ideal gift option, available in several colors. Color: gold.
+10|Hasbro Puzzle 500pc Max 4140|Toys|2885.50|220|Ideal gift option, available in several colors. Color: green.
+11|Cotton Collection Sneakers Lite 871|Fashion|3730.00|406|Ideal gift option, available in several colors. Color: white.
+12|Clear Perfume 100ml Eco 4219|Beauty|1750.00|59|Best seller of the season, limited stock. Color: green.
+13|Kingston SSD 512GB Max 7533|Computers|1330.50|391|Lightweight design, easy to use every day. Color: white.
+14|Prestige Table Fan Ultra 2746|Home|5675.00|251|Durable build and great value for money. Color: white.
+15|Munchee Coconut Oil 1L Pro 4046|Grocery|600.00|249|Popular choice among customers, ships with 1 year warranty. Color: blue.
+16|Xiaomi Tripod Mini 8745|Mobiles|45865.99|476|Brand new, sealed in original packaging. Color: grey.
+17|Clear Hair Oil Eco 7497|Beauty|350.00|11|Brand new, sealed in original packaging. Color: red.
+18|Sony Headphones Plus 1204|Electronics|13045.50|122|Best seller of the season, limited stock. Color: gold.
+19|Cotton Collection Sneakers Plus 7849|Fashion|3545.00|338|Ideal gift option, available in several colors. Color: green.
+20|Clear Perfume 100ml Deluxe 987|Beauty|1260.00|373|High quality product with excellent reviews. Color: white.
+21|Levis Hoodie Eco 7450|Fashion|1275.00|128|Popular choice among customers, ships with 1 year warranty. Color: gold.
+22|Yonex Football Compact 8956|Sports|6965.00|435|Brand new, sealed in original packaging. Color: blue.
+23|Clear Soap Pack Plus 6670|Beauty|1640.00|200|Best seller of the season, limited stock. Color: gold.
+24|Innovex Vacuum Flask Max 3211|Home|3525.00|278|Durable build and great value for money. Color: green.
+25|JBL Bluetooth Speaker Eco 8801|Electronics|16220.00|36|Popular choice among customers, ships with 1 year warranty. Color: red.
+26|Pond's Body Lotion Premium 9840|Beauty|215.00|299|High quality product with excellent reviews. Color: grey.
+27|Levis Backpack Mini 6584|Fashion|1245.50|476|Popular choice among customers, ships with 1 year warranty. Color: black.
+28|Gunasena Dictionary Eco 3592|Books|645.00|452|Popular choice among customers, ships with 1 year warranty. Color: red.
+29|Anchor Coconut Oil 1L Smart 9000|Grocery|500.00|284|Best seller of the season, limited stock. Color: white.
+30|Samsung USB-C Cable Lite 9164|Mobiles|8585.50|368|High quality product with excellent reviews. Color: red.
+31|Panasonic Pressure Cooker Pro 1612|Home|6515.50|171|Lightweight design, easy to use every day. Color: grey.
+32|Nokia Tripod Eco 258|Mobiles|6315.00|428|High quality product with excellent reviews. Color: blue.
+33|Dove Shampoo 340ml Mini 6074|Beauty|1635.00|108|Brand new, sealed in original packaging. Color: white.
+34|Anchor Noodles Pack Plus 2762|Grocery|660.00|13|Lightweight design, easy to use every day. Color: green.
+35|Lakme Lipstick Max 1871|Beauty|780.00|114|Brand new, sealed in original packaging. Color: gold.
+36|Munchee Coconut Oil 1L Plus 487|Grocery|475.99|443|Popular choice among customers, ships with 1 year warranty. Color: grey.
+37|Araliya Noodles Pack Pro 1989|Grocery|600.50|493|Best seller of the season, limited stock. Color: black.
+38|Logitech Laptop Bag Deluxe 5239|Computers|19005.00|296|Brand new, sealed in original packaging. Color: grey.
+39|Sony Webcam Eco 8921|Electronics|10255.00|36|High quality product with excellent reviews. Color: green.
+40|Acer SSD 512GB Compact 6791|Computers|14510.50|99|Ideal gift option, available in several colors. Color: silver.
+41|Nokia USB-C Cable Eco 106|Mobiles|16300.00|297|High quality product with excellent reviews. Color: gold.
+42|Oxford Notebook A4 Eco 7852|Books|925.00|146|High quality product with excellent reviews. Color: white.
+43|Levis Cap Plus 2514|Fashion|885.00|313|Popular choice among customers, ships with 1 year warranty. Color: gold.
+44|Himalaya Lipstick Smart 6647|Beauty|555.00|441|Popular choice among customers, ships with 1 year warranty. Color: silver.
+45|Cotton Collection Sneakers Pro 9232|Fashion|1645.00|411|Energy efficient and built to last. Color: green.
+46|Godage Atlas Max 7877|Books|590.00|142|Energy efficient and built to last. Color: red.
+47|Abans Pressure Cooker Deluxe 4781|Home|2975.50|277|Popular choice among customers, ships with 1 year warranty. Color: blue.
+48|Nokia Fast Charger Deluxe 2603|Mobiles|37235.00|170|Energy efficient and built to last. Color: silver.
+49|Anker Power Bank Classic 9669|Electronics|13560.00|392|Ideal gift option, available in several colors. Color: gold.
+50|Panasonic Earbuds Classic 6965|Electronics|8360.00|140|Ideal gift option, available in several colors. Color: gold.
+51|Xiaomi Webcam Compact 6724|Electronics|10735.99|319|Durable build and great value for money. Color: silver.
+52|Hot Wheels Building Blocks Compact 7122|Toys|3695.99|134|Ideal gift option, available in several colors. Color: green.
+53|Uniqlo Wrist Watch Ultra 6311|Fashion|1745.99|42|Energy efficient and built to last. Color: black.
+54|Slazenger Cricket Bat Plus 1224|Sports|43055.00|487|Brand new, sealed in original packaging. Color: red.
+55|Philips Smart Watch Max 7858|Electronics|10035.00|132|High quality product with excellent reviews. Color: blue.
+56|Barbie Toy Car Mini 1871|Toys|2320.50|465|Ideal gift option, available in several colors. Color: silver.
+57|Levis Jeans Lite 5041|Fashion|3690.00|290|Durable build and great value for money. Color: green.
+58|Slazenger Water Bottle Lite 8389|Sports|5485.00|422|Energy efficient and built to last. Color: white.
+59|Clear Hair Oil Deluxe 2606|Beauty|870.50|471|Energy efficient and built to last. Color: gold.
+60|Maybelline Sunscreen SPF50 Plus 1519|Beauty|610.99|238|Ideal gift option, available in several colors. Color: green.
+61|Xiaomi USB Hub Max 8088|Electronics|4205.50|451|Best seller of the season, limited stock. Color: black.
+62|Adidas Yoga Mat Plus 6758|Sports|4235.00|331|Energy efficient and built to last. Color: gold.
+63|Panasonic Headphones Plus 6725|Electronics|10320.50|189|Energy efficient and built to last. Color: green.
+64|Maybelline Hair Oil Deluxe 7534|Beauty|595.50|370|Brand new, sealed in original packaging. Color: green.
+65|Asus Mechanical Keyboard Plus 8033|Computers|12480.50|427|Brand new, sealed in original packaging. Color: grey.
+66|Puma Backpack Mini 331|Fashion|3205.00|499|Durable build and great value for money. Color: grey.
+67|Samsung Tripod Pro 9505|Mobiles|15285.99|95|Durable build and great value for money. Color: grey.
+68|Gunasena Dictionary Classic 8156|Books|220.00|416|Best seller of the season, limited stock. Color: white.
+69|Odel Jeans Premium 9866|Fashion|3490.00|195|Energy efficient and built to last. Color: gold.
+70|Panasonic Vacuum Flask Premium 1086|Home|6295.00|107|Brand new, sealed in original packaging. Color: grey.
+71|Asus Mechanical Keyboard Max 9143|Computers|4265.00|353|Energy efficient and built to last. Color: grey.
+72|Panasonic Power Bank Deluxe 4732|Electronics|10465.99|120|Best seller of the season, limited stock. Color: red.
+73|Pond's Body Lotion Compact 2541|Beauty|1650.00|85|Best seller of the season, limited stock. Color: grey.
+74|Godage Dictionary Deluxe 5082|Books|830.50|253|Energy efficient and built to last. Color: white.
+75|Funskool Building Blocks Deluxe 5380|Toys|15230.00|493|Durable build and great value for money. Color: grey.
+76|Barbie Building Blocks Smart 8602|Toys|16410.50|300|Ideal gift option, available in several colors. Color: gold.
+77|Logitech Router Classic 5560|Computers|14300.00|169|Ideal gift option, available in several colors. Color: gold.
+78|Singer Vacuum Flask Smart 1542|Home|3685.50|396|Ideal gift option, available in several colors. Color: black.
+79|Decathlon Gym Gloves Pro 3173|Sports|4470.99|390|Durable build and great value for money. Color: red.
+80|Panasonic Blender Smart 8041|Home|1975.00|160|Durable build and great value for money. Color: silver.
+81|HP Monitor 24in Smart 2024|Computers|27625.00|366|Best seller of the season, limited stock. Color: grey.
+82|Clear Soap Pack Plus 7583|Beauty|1060.99|307|Lightweight design, easy to use every day. Color: white.
+83|Kenwood Vacuum Flask Eco 4477|Home|8160.50|429|Energy efficient and built to last. Color: blue.
+84|Cambridge Notebook A4 Ultra 9142|Books|895.99|165|Brand new, sealed in original packaging. Color: red.
+85|Fisher-Price Teddy Bear Classic 815|Toys|1430.99|416|Ideal gift option, available in several colors. Color: silver.
+86|Apple Tripod Max 8329|Mobiles|50700.50|448|Energy efficient and built to last. Color: white.
+87|Yonex Gym Gloves Deluxe 2461|Sports|3620.00|401|Best seller of the season, limited stock. Color: green.
+88|Hot Wheels Teddy Bear Ultra 8842|Toys|1640.50|455|Energy efficient and built to last. Color: black.
+89|Fisher-Price Toy Car Compact 4808|Toys|3740.00|51|Popular choice among customers, ships with 1 year warranty. Color: gold.
+90|Apple USB-C Cable Pro 5414|Mobiles|41900.50|221|Lightweight design, easy to use every day. Color: red.
+91|Nike Water Bottle Max 2968|Sports|1020.99|124|Energy efficient and built to last. Color: blue.
+92|Zara Wrist Watch Smart 4283|Fashion|3065.99|347|Lightweight design, easy to use every day. Color: white.
+93|Pearson Story Collection Compact 7051|Books|825.99|102|Ideal gift option, available in several colors. Color: gold.
+94|Kingston Monitor 24in Premium 5981|Computers|24650.50|0|Ideal gift option, available in several colors. Color: grey.
+95|JBL Bluetooth Speaker Mini 3870|Electronics|58260.50|98|Best seller of the season, limited stock. Color: blue.
+96|Acer Laptop Smart 646|Computers|162785.00|152|High quality product with excellent reviews. Color: silver.
+97|Xiaomi Fast Charger Eco 6094|Mobiles|28105.50|132|Energy efficient and built to last. Color: grey.
+98|Highland Biscuits Pack Lite 2406|Grocery|530.00|371|Ideal gift option, available in several colors. Color: green.
+99|Dell Laptop Bag Mini 8891|Computers|6240.50|345|Best seller of the season, limited stock. Color: silver.
+100|Munchee Biscuits Pack Smart 510|Grocery|450.50|114|Popular choice among customers, ships with 1 year warranty. Color: gold.

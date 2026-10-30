@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <limits.h>
-
+#include "input.h"
 
 #include "models.h"
 #include "users.h"
@@ -202,7 +202,6 @@ int validuser(char username[])
     return 1;
 }
 
-
 /* Register customer */
 void registerCustomer(void)
 {
@@ -212,112 +211,109 @@ void registerCustomer(void)
     printf("CUSTOMER REGISTRATION\n");
     printf("==================================================\n");
 
-    /* Username */
-    printf("Username: ");
-
-    if (fgets(d.username, sizeof(d.username), stdin) == NULL)
-        return;
-
-    if (strchr(d.username, '\n') == NULL &&
-        strchr(d.username, '\r') == NULL &&
-        !feof(stdin))
+    /* Username validation */
+    while (1)
     {
-        int ch;
-        while ((ch = getchar()) != '\n' && ch != EOF)
+        if (!readNonEmptyString(
+                "Username: ", d.username, sizeof(d.username)))
         {
-        }
-
-        printf("Username is too long.\n");
-        return;
-    }
-
-    d.username[strcspn(d.username, "\r\n")] = '\0';
-
-    if (!validuser(d.username))
-        return;
-
-    /* Password */
-    printf("Password: ");
-
-    if (fgets(d.password, sizeof(d.password), stdin) == NULL)
-        return;
-
-    if (strchr(d.password, '\n') == NULL &&
-        strchr(d.password, '\r') == NULL &&
-        !feof(stdin))
-    {
-        int ch;
-        while ((ch = getchar()) != '\n' && ch != EOF)
-        {
-        }
-
-        printf("Password is too long.\n");
-        return;
-    }
-
-    d.password[strcspn(d.password, "\r\n")] = '\0';
-
-    if (strlen(d.password) == 0 ||
-        strchr(d.password, '|') != NULL)
-    {
-        printf("Password cannot be empty or contain '|'.\n");
-        return;
-    }
-
-    /* Email */
-    printf("Email: ");
-
-    if (fgets(d.email, sizeof(d.email), stdin) == NULL)
-        return;
-
-    d.email[strcspn(d.email, "\r\n")] = '\0';
-
-    if (strchr(d.email, '@') == NULL ||
-        strchr(d.email, '|') != NULL)
-    {
-        printf("Invalid email address.\n");
-        return;
-    }
-
-    /* Phone */
-    printf("Phone Number: ");
-
-    if (fgets(d.tpNumber, sizeof(d.tpNumber), stdin) == NULL)
-        return;
-
-    d.tpNumber[strcspn(d.tpNumber, "\r\n")] = '\0';
-
-    if (strlen(d.tpNumber) != 10)
-    {
-        printf("Phone number must contain exactly 10 digits.\n");
-        return;
-    }
-
-    for (int i = 0; d.tpNumber[i] != '\0'; i++)
-    {
-        if (d.tpNumber[i] < '0' || d.tpNumber[i] > '9')
-        {
-            printf("Phone number must contain digits only.\n");
             return;
         }
+
+        if (validuser(d.username))
+        {
+            break;
+        }
+
+        printf("Please enter a different valid username.\n");
     }
 
-    /* Address */
-    printf("Address: ");
-
-    if (fgets(d.address, sizeof(d.address), stdin) == NULL)
-        return;
-
-    d.address[strcspn(d.address, "\r\n")] = '\0';
-
-    if (strlen(d.address) == 0 ||
-        strchr(d.address, '|') != NULL)
+    /* Password validation */
+    while (1)
     {
-        printf("Address cannot be empty or contain '|'.\n");
-        return;
+        if (!readNonEmptyString(
+                "Password: ", d.password, sizeof(d.password)))
+        {
+            return;
+        }
+
+        if (strchr(d.password, '|') == NULL)
+        {
+            break;
+        }
+
+        printf("Password cannot contain '|'. Please try again.\n");
     }
 
-    /* Generate ID */
+    /* Email validation */
+    while (1)
+    {
+        if (!readNonEmptyString(
+                "Email: ", d.email, sizeof(d.email)))
+        {
+            return;
+        }
+
+        char *at = strchr(d.email, '@');
+
+        if (at != NULL &&
+            at != d.email &&
+            strchr(at + 1, '.') != NULL &&
+            strchr(d.email, '|') == NULL)
+        {
+            break;
+        }
+
+        printf("Invalid email address. Please try again.\n");
+    }
+
+    /* Phone number validation */
+    while (1)
+    {
+        if (!readNonEmptyString(
+                "Phone Number (10 digits): ",
+                d.tpNumber, sizeof(d.tpNumber)))
+        {
+            return;
+        }
+
+        int validPhone = (strlen(d.tpNumber) == 10);
+
+        for (size_t i = 0; d.tpNumber[i] != '\0'; i++)
+        {
+            if (d.tpNumber[i] < '0' || d.tpNumber[i] > '9')
+            {
+                validPhone = 0;
+                break;
+            }
+        }
+
+        if (validPhone)
+        {
+            break;
+        }
+
+        printf("Phone number must contain exactly 10 digits.\n");
+    }
+
+    /* Address validation */
+    while (1)
+    {
+        if (!readNonEmptyString(
+                "Address: ", d.address, sizeof(d.address)))
+        {
+            return;
+        }
+
+        if (strchr(d.address, '|') == NULL)
+        {
+            break;
+        }
+
+        printf("Address cannot contain '|'. Please try again.\n");
+    }
+
+    /* Generate user ID */
     d.id = getNextUserId();
 
     if (d.id == -1)
@@ -329,7 +325,7 @@ void registerCustomer(void)
     d.role = ROLE_CUSTOMER;
     d.isActive = 1;
 
-    /* Save user */
+    /* Save customer */
     FILE *fp = fopen(USERS_FILE, "a");
 
     if (fp == NULL)
@@ -338,15 +334,17 @@ void registerCustomer(void)
         return;
     }
 
-    int result = fprintf(fp, "%d|%s|%s|%s|%s|%s|%d|%d\n",
-                         d.id,
-                         d.username,
-                         d.password,
-                         d.email,
-                         d.tpNumber,
-                         d.address,
-                         d.role,
-                         d.isActive);
+    int result = fprintf(
+        fp, "%d|%s|%s|%s|%s|%s|%d|%d\n",
+        d.id,
+        d.username,
+        d.password,
+        d.email,
+        d.tpNumber,
+        d.address,
+        d.role,
+        d.isActive
+    );
 
     if (result < 0)
     {
@@ -363,7 +361,6 @@ void registerCustomer(void)
 
     printf("\nCustomer registered successfully! ID = %d\n", d.id);
 }
-
 
 /* Update profile */
 void updateprofile(char logginuser[])
@@ -398,14 +395,14 @@ void updateprofile(char logginuser[])
         char copy[500];
         strcpy(copy, line);
 
-        char *id = strtok(copy, "|");
+        char *id       = strtok(copy, "|");
         char *username = strtok(NULL, "|");
         char *password = strtok(NULL, "|");
-        char *email = strtok(NULL, "|");
-        char *phone = strtok(NULL, "|");
-        char *address = strtok(NULL, "|");
-        char *role = strtok(NULL, "|");
-        char *active = strtok(NULL, "|");
+        char *email    = strtok(NULL, "|");
+        char *phone    = strtok(NULL, "|");
+        char *address  = strtok(NULL, "|");
+        char *role     = strtok(NULL, "|");
+        char *active   = strtok(NULL, "|");
 
         if (id == NULL || username == NULL || password == NULL ||
             email == NULL || phone == NULL || address == NULL ||
@@ -420,59 +417,70 @@ void updateprofile(char logginuser[])
             continue;
         }
 
-        if (strcmp(username, logginuser) == 0)
+        if (strcmp(username, logginuser) != 0)
         {
-            User d = {0};
-
-            strcpy(d.username, username);
-            strcpy(d.password, password);
-            strcpy(d.email, email);
-            strcpy(d.tpNumber, phone);
-            strcpy(d.address, address);
-
-            printf("\n========== UPDATE PROFILE ==========\n");
-            printf("Current Email: %s\n", d.email);
-
-            /* New email */
-            printf("New Email: ");
-
-            if (fgets(d.email, sizeof(d.email), stdin) == NULL)
+            if (fprintf(temp, "%s\n", line) < 0)
             {
                 error = 1;
                 break;
             }
 
-            d.email[strcspn(d.email, "\r\n")] = '\0';
+            continue;
+        }
 
-            if (strchr(d.email, '@') == NULL ||
-                strchr(d.email, '|') != NULL)
+        User d = {0};
+
+        snprintf(d.username, sizeof(d.username), "%s", username);
+        snprintf(d.password, sizeof(d.password), "%s", password);
+        snprintf(d.email, sizeof(d.email), "%s", email);
+        snprintf(d.tpNumber, sizeof(d.tpNumber), "%s", phone);
+        snprintf(d.address, sizeof(d.address), "%s", address);
+
+        printf("\n========== UPDATE PROFILE ==========\n");
+        printf("Current Email: %s\n", d.email);
+        printf("Current Phone: %s\n", d.tpNumber);
+        printf("Current Address: %s\n", d.address);
+
+        /* Email validation */
+        while (1)
+        {
+            if (!readNonEmptyString(
+                    "New Email: ", d.email, sizeof(d.email)))
             {
-                printf("Invalid email address.\n");
                 error = 1;
                 break;
             }
 
-            /* New phone */
-            printf("New Phone Number: ");
+            char *at = strchr(d.email, '@');
 
-            if (fgets(d.tpNumber, sizeof(d.tpNumber), stdin) == NULL)
+            if (at != NULL &&
+                at != d.email &&
+                strchr(at + 1, '.') != NULL &&
+                strchr(d.email, '|') == NULL)
+            {
+                break;
+            }
+
+            printf("Invalid email address. Please try again.\n");
+        }
+
+        if (error)
+            break;
+
+        /* Phone validation */
+        while (1)
+        {
+            if (!readNonEmptyString(
+                    "New Phone Number (10 digits): ",
+                    d.tpNumber, sizeof(d.tpNumber)))
             {
                 error = 1;
                 break;
             }
 
-            d.tpNumber[strcspn(d.tpNumber, "\r\n")] = '\0';
+            int validPhone = (strlen(d.tpNumber) == 10);
 
-            if (strlen(d.tpNumber) != 10)
-            {
-                printf("Phone number must contain exactly 10 digits.\n");
-                error = 1;
-                break;
-            }
-
-            int validPhone = 1;
-
-            for (int i = 0; d.tpNumber[i] != '\0'; i++)
+            for (size_t i = 0; d.tpNumber[i] != '\0'; i++)
             {
                 if (d.tpNumber[i] < '0' || d.tpNumber[i] > '9')
                 {
@@ -481,56 +489,49 @@ void updateprofile(char logginuser[])
                 }
             }
 
-            if (!validPhone)
-            {
-                printf("Phone number must contain digits only.\n");
-                error = 1;
+            if (validPhone)
                 break;
-            }
 
-            /* New address */
-            printf("New Address: ");
-
-            if (fgets(d.address, sizeof(d.address), stdin) == NULL)
-            {
-                error = 1;
-                break;
-            }
-
-            d.address[strcspn(d.address, "\r\n")] = '\0';
-
-            if (strlen(d.address) == 0 ||
-                strchr(d.address, '|') != NULL)
-            {
-                printf("Address cannot be empty or contain '|'.\n");
-                error = 1;
-                break;
-            }
-
-            if (fprintf(temp, "%s|%s|%s|%s|%s|%s|%s|%s\n",
-                        id,
-                        d.username,
-                        d.password,
-                        d.email,
-                        d.tpNumber,
-                        d.address,
-                        role,
-                        active) < 0)
-            {
-                error = 1;
-                break;
-            }
-
-            found = 1;
+            printf("Phone number must contain exactly 10 digits.\n");
         }
-        else
+
+        if (error)
+            break;
+
+        /* Address validation */
+        while (1)
         {
-            if (fprintf(temp, "%s\n", line) < 0)
+            if (!readNonEmptyString(
+                    "New Address: ", d.address, sizeof(d.address)))
             {
                 error = 1;
                 break;
             }
+
+            if (strchr(d.address, '|') == NULL)
+                break;
+
+            printf("Address cannot contain '|'. Please try again.\n");
         }
+
+        if (error)
+            break;
+
+        if (fprintf(temp, "%s|%s|%s|%s|%s|%s|%s|%s\n",
+                    id,
+                    d.username,
+                    d.password,
+                    d.email,
+                    d.tpNumber,
+                    d.address,
+                    role,
+                    active) < 0)
+        {
+            error = 1;
+            break;
+        }
+
+        found = 1;
     }
 
     if (ferror(fp))
@@ -545,7 +546,7 @@ void updateprofile(char logginuser[])
     if (error)
     {
         remove("temp.txt");
-        printf("Profile update failed. Original data was preserved.\n");
+        printf("\nProfile update failed. Original data was preserved.\n");
         return;
     }
 
@@ -556,19 +557,14 @@ void updateprofile(char logginuser[])
         return;
     }
 
-    /*
-       Replace the original file.
-       On some systems, rename() cannot replace an existing file.
-       In that case, the original file remains untouched.
-    */
     if (rename("temp.txt", USERS_FILE) != 0)
     {
         printf("Could not replace the users file.\n");
-        printf("Original data was preserved. Temporary file: temp.txt\n");
+        printf("Temporary file retained: temp.txt\n");
         return;
     }
 
-    printf("Profile updated successfully!\n");
+    printf("\nProfile updated successfully!\n");
 }
 
 
