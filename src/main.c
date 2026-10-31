@@ -1,3 +1,6 @@
+#ifdef _WIN32
+#include <windows.h>
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -17,6 +20,10 @@ void showAboutUs(void);
 
 int main(void)
 {
+#ifdef _WIN32
+    SetConsoleOutputCP(CP_UTF8);
+#endif
+
     int choice;
     showSplash(); // display splash screen
     printf("\nPress Enter to continue...");
@@ -96,7 +103,7 @@ void customerLogin(void)
         while (1)
         {
             clearScreen();
-            displayCustomerMenu();
+            displayCustomerMenu(user);
             printf("\nEnter choice: ");
             if (scanf("%d", &userIn) != 1)
             {
@@ -212,21 +219,67 @@ void showInstructions(void)
 {
     clearScreen();
     drawHeader("INSTRUCTIONS");
-    printf("\n  1. Use numbers to navigate\n");
-    printf("  2. Login to buy products\n");
-    printf("  3. Cart -> Checkout -> Order flow\n");
-    printf("  4. Admin: 99\n");
-    printf("\nPress Enter to go back...");
+    printf("%s%s\n" RESET, MAGENTA, R_V);
+
+    printf("%s%s  " RESET BOLD CYAN "GETTING STARTED\n" RESET, MAGENTA, R_V);
+    drawMenuItem(1, "Register", "Create a customer account");
+    drawMenuItem(2, "Login", "Use your username and password");
+    drawMenuItem(3, "Guest", "Browse products without login");
+    printf("%s%s\n" RESET, MAGENTA, R_V);
+
+    printf("%s%s  " RESET BOLD CYAN "CUSTOMER\n" RESET, MAGENTA, R_V);
+    drawMenuItem(1, "Browse & Buy", "Pick a product and add to cart");
+    drawMenuItem(2, "Search", "Find a product by name");
+    drawMenuItem(3, "My Cart", "Review items, remove, checkout");
+    drawMenuItem(4, "My Orders", "View order history and invoices");
+    printf("%s%s\n" RESET, MAGENTA, R_V);
+
+    printf("%s%s  " RESET BOLD CYAN "ADMIN\n" RESET, MAGENTA, R_V);
+    printf("%s%s  " RESET DIM "Enter 99 at the main menu and log in with\n" RESET, MAGENTA, R_V);
+    printf("%s%s  " RESET DIM "admin credentials to manage products, users\n" RESET, MAGENTA, R_V);
+    printf("%s%s  " RESET DIM "and orders.\n" RESET, MAGENTA, R_V);
+    printf("%s%s\n" RESET, MAGENTA, R_V);
+
+    printf("%s%s  " RESET YELLOW "TIP: " RESET DIM "Type the number of an option and press Enter.\n" RESET, MAGENTA, R_V);
+    printf("%s%s\n" RESET, MAGENTA, R_V);
+    drawFooter();
+
+    printf(DIM "\n  Press Enter to go back..." RESET);
     getchar();
 }
-
 void showAboutUs(void)
 {
     clearScreen();
     drawHeader("ABOUT US");
-    printf("\n  Nordic E-Commerce v1.0\n");
-    printf("  Built on Ubuntu - C Project\n");
-    printf("  Main Features: Login, Products, Cart, Orders\n");
-    printf("\nPress Enter to go back...");
-    getchar();
+
+    printf("\n╭──────────────────────────────────────────────────────────────╮\n");
+    printf("  │  " BOLD CYAN "E-Commerce Management System v1.0" RESET "     │\n");
+    printf("  │  " DIM "First Year C Programming Group Project" RESET "      │\n");
+    printf("  ╰──────────────────────────────────────────────────────────────╯\n");
+
+    printf("\n  " BOLD WHITE "Group Members\n" RESET);
+    printf("  " DIM "──────────────────────────────────────────────────────────────────────────────────\n" RESET);
+
+    printf("  ╭───────────────────────────────────────────────────────────────────────────────────────────╮\n");
+    printf("  │  " YELLOW "TG/IT/2025/2522" RESET "  " BOLD WHITE "H.G.L.R. Prasanna" RESET " (Leader)    │\n");
+    printf("  │  " DIM "                   Main Function & UI" RESET "                                    │\n");
+    printf("  │                                                                                           │\n");
+    printf("  │  " YELLOW "TG/IT/2025/2484" RESET "  " WHITE "A.B. Manamperi" RESET "                     │\n");
+    printf("  │  " DIM "                   Cart" RESET "                                                  │\n");
+    printf("  │                                                                                           │\n");
+    printf("  │  " YELLOW "TG/IT/2025/2504" RESET "  " WHITE "A.R.S. Aluthwaththa" RESET "                │\n");
+    printf("  │  " DIM "                   Admin Part" RESET "                                            │\n");
+    printf("  │                                                                                           │\n");
+    printf("  │  " YELLOW "TG/IT/2025/2476" RESET "  " WHITE "G. Salitha Devin Perera" RESET "            │\n");
+    printf("  │  " DIM "                   User Management" RESET "                                       │\n");
+    printf("  │                                                                                           │\n");
+    printf("  │  " YELLOW "TG/IT/2025/2481" RESET "  " WHITE "H.G.S. Dilshan" RESET "                     │\n");
+    printf("  │  " DIM "                   Product Section" RESET "                                       │\n");
+    printf("  │                                                                                           │\n");
+    printf("  │  " YELLOW "TG/IT/2025/2477" RESET "  " WHITE "N.H.S.T. Nimsara" RESET "                   │\n");
+    printf("  │  " DIM "                   Order Section" RESET "                                         │\n");
+    printf("  ╰───────────────────────────────────────────────────────────────────────────────────────────╯\n");
+
+    printf("\n");
+    pressEnterToContinue();
 }

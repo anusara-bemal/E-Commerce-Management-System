@@ -1,534 +1,285 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stddef.h>
+#include <stdarg.h>
+#include <limits.h>
+#include <math.h>
+#include <errno.h>
+#include <time.h>
 #ifdef _WIN32
 #include <direct.h>
 #else
 #include <sys/stat.h>
+#include <sys/types.h>
 #endif
-#include <time.h>
 #include "orders.h"
 #include "cart.h"
 #include "products.h"
 #include "ui.h"
 
-#define ORDERS_FILE "data/orders.txt"
-#define TEMP_ORDERS_FILE "data/temp_orders.txt"
-#define MAX_LINE 300
+/* ------------------------------------------------------------------ */
+/*  Constants                                                          */
+/* ------------------------------------------------------------------ */
 
-// Valid order statuses
+#define DATA_DIR          "data"
+#define INVOICE_DIR       "data/invoices"
+#define ORDERS_FILE       "data/orders.txt"
+#define TEMP_ORDERS_FILE  "data/temp_orders.txt"
+#define CART_DATA_FILE    "data/cart.txt"
+
+#define LINE_SIZE          512
+#define MAX_CHECKOUT_ITEMS 100
+#define ORDER_FORMAT       "%d|%s|%s|%s|%d|%.2f|%d\n"
+
 #define STATUS_PENDING 0
 #define STATUS_PAID    1
 #define STATUS_SHIPPED 2
 
+#define DELIVERY_STANDARD 1
+#define DELIVERY_EXPRESS  2
+#define PAYMENT_COD       1
 
+#define STANDARD_SHIPPING_FEE 100.0f
+#define EXPRESS_SHIPPING_FEE  250.0f
+#define FREE_SHIPPING_OVER    500.0f
 
-// Calculate total price
-void order_process(const int *cartItem, int quantity,
-float *unitPrice, float *totalPrice)
+#define CHOICE_INVALID (-1)
+#define CHOICE_EOF     (-2)
+
+/* ANSI colours (local names so they never clash with ui.h) */
+#define OR_RESET  "\x1b[0m"
+#define OR_BOLD   "\x1b[1m"
+#define OR_DIM    "\x1b[2m"
+#define OR_CYAN   "\x1b[36m"
+#define OR_GREEN  "\x1b[32m"
+#define OR_YELLOW "\x1b[33m"
+
+/* Box drawing characters (UTF-8) */
+#define BOX_H  "\xe2\x95\x90"
+#define BOX_V  "\xe2\x95\x91"
+#define BOX_TL "\xe2\x95\x94"
+#define BOX_TR "\xe2\x95\x97"
+#define BOX_ML "\xe2\x95\xa0"
+#define BOX_MR "\xe2\x95\xa3"
+#define BOX_BL "\xe2\x95\x9a"
+#define BOX_BR "\xe2\x95\x9d"
+#define INVOICE_WIDTH 48
+
+typedef struct
 {
-if (cartItem == NULL || unitPrice == NULL || totalPrice == NULL ||
-quantity <= 0)
-{
-if (totalPrice != NULL)
-*totalPrice = 0.0f;
-    return;
-}
-
-*totalPrice = 0.0f;
-
-for (int i = 0; i < quantity; i++)
-{
-    if (cartItem[i] < 0 || unitPrice[i] < 0.0f)
-    {
-        *totalPrice = 0.0f;
-        return;
-    }
-
-    *totalPrice += cartItem[i] * unitPrice[i];
-}
-
-
-}
-
-
-
-// Convert status number to text
-const char *statusToText(int status)
-{
-switch (status)
-{
-case STATUS_PENDING:
-return "PENDING";
-
-
-    case STATUS_PAID:
-        return "PAID";
-
-    case STATUS_SHIPPED:
-        return "SHIPPED";
-
-    default:
-        return "UNKNOWN";
-}
-
-
-}
-
-
-
-// Generate next order ID
-static int generateOrderId(void)
-{
-    FILE *file = fopen(ORDERS_FILE, "r");
-
-    if (file == NULL)
-    {
-        
-        file = fopen(ORDERS_FILE, "a");
-
-        if (file == NULL)
-        {
-            return -1;
-        }
-
-        if (fclose(file) != 0)
-        {
-            return -1;
-        }
-
-        return 1;
-    }
-
-    char line[MAX_LINE];
     int id;
-    int maxId = 0;
+    char username[50];
+    char phone[30];
+    char address[200];
+    int itemCount;
+    float total;
+    int status;
+} OrderRecord;
 
-    while (fgets(line, sizeof(line), file) != NULL)
-    {
-        if (sscanf(line, "%d|", &id) == 1 && id > maxId)
-        {
-            maxId = id;
-        }
-    }
+typedef struct
+{
+    int productIds[MAX_CHECKOUT_ITEMS];
+    int quantities[MAX_CHECKOUT_ITEMS];
+    float unitPrices[MAX_CHECKOUT_ITEMS];
+    int count;
+} CheckoutItems;
 
-    if (ferror(file))
-    {
-        fclose(file);
-        return -1;
-    }
+typedef struct
+{
+    char phone[30];
+    char address[200];
+} ShippingInfo;
 
-    fclose(file);
+typedef enum
+{
+    DETAILS_BACK = 0,
+    DETAILS_OK = 1,
+    DETAILS_INVALID = 2
+} DetailsResult;
 
-    if (maxId == 2147483647)
-    {
-        return -1;
-    }
+/* ------------------------------------------------------------------ */
+/*  Small helpers                                                      */
+/* ------------------------------------------------------------------ */
 
-    return maxId + 1;
+static void makeDir(const char *path)
+{
+#ifdef _WIN32
+    _mkdir(path);
+#else
+    mkdir(path, 0755);
+#endif
 }
 
-
-
-// Place order
-int placeOrder(
-    const char *username,
-    const char *phoneNumber,
-    const char *address,
-    int itemCount,
-    float totalAmount,
-    int *newOrderId)
+/* Reads one line, discards overflow, trims spaces. Returns 0 on EOF. */
+static int inputLine(char *buf, size_t size)
 {
-    if (username == NULL ||
-        phoneNumber == NULL ||
-        address == NULL ||
-        username[0] == '\0' ||
-        phoneNumber[0] == '\0' ||
-        address[0] == '\0')
-    {
-        printf("\n[Error] Invalid customer details!\n");
+    char *start = buf;
+    size_t len;
+
+    if (fgets(buf, (int)size, stdin) == NULL)
         return 0;
-    }
 
-    if (strchr(username, '|') != NULL ||
-        strchr(phoneNumber, '|') != NULL ||
-        strchr(address, '|') != NULL ||
-        strpbrk(username, "\r\n") != NULL ||
-        strpbrk(phoneNumber, "\r\n") != NULL ||
-        strpbrk(address, "\r\n") != NULL)
+    if (strchr(buf, '\n') == NULL)
     {
-        printf("\n[Error] Customer details contain invalid characters!\n");
-        return 0;
+        int c;
+        while ((c = getchar()) != '\n' && c != EOF)
+            ;
     }
 
-    if (itemCount <= 0 ||
-        totalAmount <= 0.0f ||
-        totalAmount != totalAmount ||
-        totalAmount > 1.0e30f)
-    {
-        printf("\n[Error] Invalid order details!\n");
-        return 0;
-    }
+    buf[strcspn(buf, "\r\n")] = '\0';
 
-    int newId = generateOrderId();
+    while (*start == ' ' || *start == '\t')
+        start++;
+    if (start != buf)
+        memmove(buf, start, strlen(start) + 1);
 
-    if (newId < 0)
-    {
-        printf("\n[Error] Could not generate an order ID!\n");
-        return 0;
-    }
-
-    if (newOrderId != NULL)
-    {
-        *newOrderId = newId;
-    }
-
-    FILE *file = fopen(ORDERS_FILE, "a");
-
-    if (file == NULL)
-    {
-        printf("\n[Error] Could not open %s!\n", ORDERS_FILE);
-        return 0;
-    }
-
-    int writeOk = fprintf(
-        file,
-        "%d|%s|%s|%s|%d|%.2f|%d\n",
-        newId,
-        username,
-        phoneNumber,
-        address,
-        itemCount,
-        totalAmount,
-        STATUS_PENDING
-    ) >= 0;
-
-    if (fclose(file) != 0)
-    {
-        writeOk = 0;
-    }
-
-    if (!writeOk)
-    {
-        printf("\n[Error] Failed to save the order!\n");
-        return 0;
-    }
+    len = strlen(buf);
+    while (len > 0 && (buf[len - 1] == ' ' || buf[len - 1] == '\t'))
+        buf[--len] = '\0';
 
     return 1;
 }
 
-
-
-// View orders belonging to a customer
-void myOrders(char username[])
+static int parseInt(const char *s, int *out)
 {
-if (username == NULL || username[0] == '\0')
-{
-printf("\n[Error] Invalid username!\n");
-return;
+    char *end;
+    long v;
+
+    errno = 0;
+    v = strtol(s, &end, 10);
+    if (end == s || *end != '\0' || errno == ERANGE || v > INT_MAX || v < INT_MIN)
+        return 0;
+    *out = (int)v;
+    return 1;
 }
 
-clearScreen();
-drawHeader("MY ORDERS");
-
-
-FILE *file = fopen(ORDERS_FILE, "r");
-
-if (file == NULL)
+/* Prompt + read a non-negative number. CHOICE_INVALID / CHOICE_EOF on failure. */
+static int readChoice(const char *prompt)
 {
-    printf("\nYou have no orders yet.\n");
-    return;
+    char buf[32];
+    int v;
+
+    printf("%s", prompt);
+    if (!inputLine(buf, sizeof(buf)))
+        return CHOICE_EOF;
+    return (parseInt(buf, &v) && v >= 0) ? v : CHOICE_INVALID;
 }
 
-printf("\n================ MY ORDERS ================\n");
-printf("%-6s %-20s %-8s %-12s %-10s\n",
-       "ID", "ADDRESS", "ITEMS", "TOTAL", "STATUS");
-
-printf("-------------------------------------------------------------\n");
-
-char line[MAX_LINE];
-int found = 0;
-
-while (fgets(line, sizeof(line), file) != NULL)
+static void invalidChoice(void)
 {
-    int id;
-    int itemCount;
-    int status;
-    float total;
+    printf("Invalid choice\n");
+    pressEnterToContinue();
+}
 
-    char name[30];
-    char phone[15];
-    char address[100];
+/* Non-empty text with no '|' or line breaks (safe for the data files). */
+static int validField(const char *s)
+{
+    return s != NULL && s[0] != '\0' && strpbrk(s, "|\r\n") == NULL;
+}
 
-    int fields = sscanf(line,
-                        "%d|%29[^|]|%14[^|]|%99[^|]|%d|%f|%d",
-                        &id, name, phone, address,
-                        &itemCount, &total, &status);
+/* Splits s in place on '|'. Keeps empty fields. Returns field count. */
+static int splitFields(char *s, char **fields, int maxFields)
+{
+    int n = 1;
 
-    if (fields != 7)
-        continue;
-
-    if (strcmp(name, username) == 0)
+    fields[0] = s;
+    for (; *s != '\0'; s++)
     {
-        printf("%-6d %-20.20s %-8d %-12.2f %-10s\n",
-               id, address, itemCount, total,
-               statusToText(status));
+        if (*s == '|' && n < maxFields)
+        {
+            *s = '\0';
+            fields[n++] = s + 1;
+        }
+    }
+    return n;
+}
 
-        found++;
+/* Windows rename() fails if the target exists, so remove it first. */
+static int replaceFile(const char *tmp, const char *target)
+{
+    if (remove(target) != 0 && errno != ENOENT)
+        return 0;
+    return rename(tmp, target) == 0;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Order file format: id|user|phone|address|items|total|status        */
+/* ------------------------------------------------------------------ */
+
+static int parseOrderLine(const char *line, OrderRecord *o)
+{
+    char buf[LINE_SIZE];
+    char *f[7];
+    char *end;
+
+    snprintf(buf, sizeof(buf), "%s", line);
+    buf[strcspn(buf, "\r\n")] = '\0';
+
+    if (splitFields(buf, f, 7) != 7)
+        return 0;
+
+    if (!parseInt(f[0], &o->id) || o->id < 1 ||
+        !parseInt(f[4], &o->itemCount) ||
+        !parseInt(f[6], &o->status))
+        return 0;
+
+    o->total = strtof(f[5], &end);
+    if (end == f[5] || *end != '\0')
+        return 0;
+
+    snprintf(o->username, sizeof(o->username), "%s", f[1]);
+    snprintf(o->phone, sizeof(o->phone), "%s", f[2]);
+    snprintf(o->address, sizeof(o->address), "%s", f[3]);
+    return 1;
+}
+
+static int writeOrder(FILE *f, const OrderRecord *o)
+{
+    return fprintf(f, ORDER_FORMAT, o->id, o->username, o->phone, o->address,
+                   o->itemCount, o->total, o->status) >= 0;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Pricing / text helpers                                             */
+/* ------------------------------------------------------------------ */
+
+/* totalPrice = sum(quantities[i] * unitPrices[i]); 0 on any invalid value */
+void order_process(const int *quantities, int itemCount,
+                   float *unitPrices, float *totalPrice)
+{
+    if (totalPrice == NULL)
+        return;
+
+    *totalPrice = 0.0f;
+
+    if (quantities == NULL || unitPrices == NULL || itemCount <= 0)
+        return;
+
+    for (int i = 0; i < itemCount; i++)
+    {
+        if (quantities[i] < 0 || unitPrices[i] < 0.0f)
+        {
+            *totalPrice = 0.0f;
+            return;
+        }
+        *totalPrice += quantities[i] * unitPrices[i];
     }
 }
 
-fclose(file);
-
-if (found == 0)
-    printf("You have no orders yet.\n");
-
-printf("============================================\n");
-
-
-}
-
-
-
-
-
-
-
-// Admin: view all orders
-void updateOrderStatus(void)
+const char *statusToText(int status)
 {
-FILE *file = fopen(ORDERS_FILE, "r");
-
-
-if (file == NULL)
-{
-    printf("\nNo orders found or orders file is unavailable.\n");
-    return;
-}
-
-printf("\n================ ALL ORDERS ================\n");
-printf("%-6s %-15s %-12s %-10s\n",
-       "ID", "CUSTOMER", "TOTAL", "STATUS");
-
-printf("---------------------------------------------\n");
-
-char line[MAX_LINE];
-int found = 0;
-
-while (fgets(line, sizeof(line), file) != NULL)
-{
-    int id;
-    int itemCount;
-    int status;
-    float total;
-
-    char name[30];
-    char phone[15];
-    char address[100];
-
-    int fields = sscanf(line,
-                        "%d|%29[^|]|%14[^|]|%99[^|]|%d|%f|%d",
-                        &id, name, phone, address,
-                        &itemCount, &total, &status);
-
-    if (fields != 7)
-        continue;
-
-    printf("%-6d %-15.15s %-12.2f %-10s\n",
-           id, name, total, statusToText(status));
-
-    found++;
-}
-
-fclose(file);
-
-if (found == 0)
-{
-    printf("\nNo valid orders found.\n");
-    return;
-}
-
-int orderId;
-int newStatus;
-
-printf("\nOrder ID (0 = cancel): ");
-
-if (scanf("%d", &orderId) != 1)
-{
-    printf("\n[Error] Invalid input!\n");
-
-    int ch;
-    while ((ch = getchar()) != '\n' && ch != EOF)
+    switch (status)
     {
-    }
-
-    return;
-}
-
-if (orderId == 0)
-    return;
-
-if (orderId < 1)
-{
-    printf("\n[Error] Invalid order ID!\n");
-    return;
-}
-
-printf("\nNew Status:\n");
-printf("0 = PENDING\n");
-printf("1 = PAID\n");
-printf("2 = SHIPPED\n");
-printf("Enter status: ");
-
-if (scanf("%d", &newStatus) != 1)
-{
-    printf("\n[Error] Invalid status input!\n");
-
-    int ch;
-    while ((ch = getchar()) != '\n' && ch != EOF)
-    {
-    }
-
-    return;
-}
-
-if (newStatus < STATUS_PENDING || newStatus > STATUS_SHIPPED)
-{
-    printf("\n[Error] Invalid status! Choose 0, 1 or 2.\n");
-    return;
-}
-
-FILE *oldFile = fopen(ORDERS_FILE, "r");
-
-if (oldFile == NULL)
-{
-    printf("\n[Error] Could not open orders file!\n");
-    return;
-}
-
-FILE *tempFile = fopen(TEMP_ORDERS_FILE, "w");
-
-if (tempFile == NULL)
-{
-    fclose(oldFile);
-    printf("\n[Error] Could not create temporary orders file!\n");
-    return;
-}
-
-int orderFound = 0;
-int writeError = 0;
-
-while (fgets(line, sizeof(line), oldFile) != NULL)
-{
-    int id;
-    int itemCount;
-    int status;
-    float total;
-
-    char name[30];
-    char phone[15];
-    char address[100];
-
-    int fields = sscanf(line,
-                        "%d|%29[^|]|%14[^|]|%99[^|]|%d|%f|%d",
-                        &id, name, phone, address,
-                        &itemCount, &total, &status);
-
-    if (fields != 7)
-    {
-        // Log the malformed line for debugging purposes.
-        if (fputs(line, tempFile) == EOF)
-            writeError = 1;
-
-        continue;
-    }
-
-    if (id == orderId)
-    {
-        status = newStatus;
-        orderFound = 1;
-    }
-
-    if (fprintf(tempFile, "%d|%s|%s|%s|%d|%.2f|%d\n",
-                id, name, phone, address,
-                itemCount, total, status) < 0)
-    {
-        writeError = 1;
-        break;
+    case STATUS_PENDING: return "PENDING";
+    case STATUS_PAID:    return "PAID";
+    case STATUS_SHIPPED: return "SHIPPED";
+    default:             return "UNKNOWN";
     }
 }
-
-if (ferror(oldFile))
-    writeError = 1;
-
-if (fclose(oldFile) != 0)
-    writeError = 1;
-
-if (fclose(tempFile) != 0)
-    writeError = 1;
-
-if (writeError)
-{
-    remove(TEMP_ORDERS_FILE);
-    printf("\n[Error] Failed to write updated orders!\n");
-    return;
-}
-
-if (!orderFound)
-{
-    remove(TEMP_ORDERS_FILE);
-    printf("\n[Error] Order ID %d was not found!\n", orderId);
-    return;
-}
-
-
-
-
-// Replace the original file only after successful processing.
-if (remove(ORDERS_FILE) != 0)
-{
-    printf("\n[Error] Could not replace the original orders file!\n");
-    printf("Updated data remains in %s\n", TEMP_ORDERS_FILE);
-    return;
-}
-
-if (rename(TEMP_ORDERS_FILE, ORDERS_FILE) != 0)
-{
-    printf("\n[Error] Could not rename the temporary file!\n");
-    printf("Recovery file: %s\n", TEMP_ORDERS_FILE);
-    return;
-}
-
-printf("\n[OK] Order %d status updated to %s!\n",
-       orderId, statusToText(newStatus));
-
-
-}
-
-
-
-// Delivery options and payment options
-#define DELIVERY_STANDARD 1
-#define DELIVERY_EXPRESS  2
-
-#define PAYMENT_COD  1
-
-#define STANDARD_SHIPPING_FEE  100.0f
-#define EXPRESS_SHIPPING_FEE  250.0f
-#define FREE_SHIPPING_OVER     500.0f
 
 const char *deliveryMethodText(int deliveryMethod)
 {
-    switch (deliveryMethod)
-    {
-        case DELIVERY_EXPRESS:
-            return "EXPRESS";
-
-        case DELIVERY_STANDARD:
-        default:
-            return "STANDARD";
-    }
+    return deliveryMethod == DELIVERY_EXPRESS ? "EXPRESS" : "STANDARD";
 }
 
 const char *paymentMethodText(int paymentMethod)
@@ -540,110 +291,503 @@ const char *paymentMethodText(int paymentMethod)
 float getDeliveryFee(int deliveryMethod, float subtotal)
 {
     if (deliveryMethod == DELIVERY_EXPRESS)
-    {
         return EXPRESS_SHIPPING_FEE;
-    }
-
-    // Free standard shipping for orders over 500
     if (subtotal >= FREE_SHIPPING_OVER)
-    {
         return 0.0f;
-    }
-
     return STANDARD_SHIPPING_FEE;
 }
 
-// Checkout : Customer chooses delivery method
-int chooseDeliveryMethod(float subtotal)
+/* ------------------------------------------------------------------ */
+/*  Place order                                                        */
+/* ------------------------------------------------------------------ */
+
+/* Next free order ID, or -1 on error. */
+static int generateOrderId(void)
 {
-    printf("\nDelivery Options:\n");
-    printf("1. Standard Shipping - Rs. %.2f (Delivery in 5-8 days)\n", STANDARD_SHIPPING_FEE);
-    printf("2. Express Shipping - Rs. %.2f (Delivery in 2-4 days)\n", EXPRESS_SHIPPING_FEE);
+    FILE *file = fopen(ORDERS_FILE, "r");
+    char line[LINE_SIZE];
+    int maxId = 0;
+    int readError;
 
-    if (subtotal >= FREE_SHIPPING_OVER)
+    if (file == NULL)
+        return errno == ENOENT ? 1 : -1;
+
+    while (fgets(line, sizeof(line), file) != NULL)
     {
-
+        int id = atoi(line);
+        if (id > maxId)
+            maxId = id;
     }
 
-    int choice = 0;
-    int valid = 0;
+    readError = ferror(file);
+    fclose(file);
 
-    while (valid == 0)
-    {
-        printf("Enter your delivery choice (1/2): ");
-
-        if (scanf("%d", &choice) != 1)
-        {
-            printf("Invalid input!\n");
-
-            while (getchar() != '\n' && !feof(stdin))
-            {
-            }
-
-            choice = 0;
-        }
-
-        while (getchar() != '\n' && !feof(stdin))
-        {
-        }
-
-        if (choice == DELIVERY_STANDARD || choice == DELIVERY_EXPRESS)
-        {
-            valid = 1;
-        }
-        else
-        {
-            printf("Invalid choice! Please select 1 or 2.\n");
-        }
-    }
-
-    return choice;
+    if (readError || maxId == INT_MAX)
+        return -1;
+    return maxId + 1;
 }
 
-// Checkout : Payment - Cash on Delivery ( welawak tibbot witarak psse fake card payment ekk add krnnm )
-int choosePaymentMethod(void)
+int placeOrder(const char *username, const char *phoneNumber,
+               const char *address, int itemCount,
+               float totalAmount, int *newOrderId)
 {
-    printf("\nPayment Options:\n");
-    printf("1. Cash on Delivery (Pay when your order arrives)\n");
+    FILE *file;
+    int newId;
+    int ok;
 
-    int choice = 0;
-    int valid = 0;
-
-    while (valid == 0)
+    if (!validField(username) || !validField(phoneNumber) || !validField(address))
     {
-        printf("Enter your payment choice (1): ");
-
-        if (scanf("%d", &choice) != 1)
-        {
-            printf("Invalid input!\n");
-
-            while (getchar() != '\n' && !feof(stdin))
-            {
-            }
-
-            choice = 0;
-        }
-
-        while (getchar() != '\n' && !feof(stdin))
-        {
-        }
-
-        if (choice == PAYMENT_COD)
-        {
-            valid = 1;
-        }
-        else
-        {
-            printf("Invalid choice! Please select 1.\n");
-        }
+        printf("\n[Error] Invalid customer details!\n");
+        return 0;
     }
 
-    return choice;
+    if (itemCount <= 0 || !(totalAmount > 0.0f) || !isfinite(totalAmount))
+    {
+        printf("\n[Error] Invalid order details!\n");
+        return 0;
+    }
+
+    makeDir(DATA_DIR);
+
+    newId = generateOrderId();
+    if (newId < 0)
+    {
+        printf("\n[Error] Could not generate an order ID!\n");
+        return 0;
+    }
+
+    file = fopen(ORDERS_FILE, "a");
+    if (file == NULL)
+    {
+        printf("\n[Error] Could not open %s: %s\n", ORDERS_FILE, strerror(errno));
+        return 0;
+    }
+
+    ok = fprintf(file, ORDER_FORMAT, newId, username, phoneNumber, address,
+                 itemCount, totalAmount, STATUS_PENDING) >= 0;
+    if (fclose(file) != 0)
+        ok = 0;
+
+    if (!ok)
+    {
+        printf("\n[Error] Failed to save the order!\n");
+        return 0;
+    }
+
+    if (newOrderId != NULL)
+        *newOrderId = newId;
+    return 1;
 }
 
+/* ------------------------------------------------------------------ */
+/*  View / manage orders                                               */
+/* ------------------------------------------------------------------ */
 
+void myOrders(char username[])
+{
+    FILE *file;
+    char line[LINE_SIZE];
+    OrderRecord o;
+    int found = 0;
 
-// Generate invoice after placing an order
+    if (username == NULL || username[0] == '\0')
+    {
+        showError("Invalid username!");
+        pressEnterToContinue();
+        return;
+    }
+
+    clearScreen();
+    drawHeader("MY ORDERS");
+
+    file = fopen(ORDERS_FILE, "r");
+    if (file == NULL)
+    {
+        printf("\n");
+        showInfo("You have no orders yet. Start shopping!");
+        pressEnterToContinue();
+        return;
+    }
+
+    // Table Header - Nordic Style
+    printf("\n");
+    printTableHeader(5, "ID", "ADDRESS", "ITEMS", "TOTAL", "STATUS");
+    printTableDivider(5);
+
+    while (fgets(line, sizeof(line), file) != NULL)
+    {
+        if (parseOrderLine(line, &o) && strcmp(o.username, username) == 0)
+        {
+            char idStr[10];
+            char itemsStr[10];
+            char totalStr[20];
+            
+            snprintf(idStr, sizeof(idStr), "%d", o.id);
+            snprintf(itemsStr, sizeof(itemsStr), "%d", o.itemCount);
+            snprintf(totalStr, sizeof(totalStr), "Rs.%.2f", o.total);
+            
+            // Status color එක
+            const char* statusText = statusToText(o.status);
+            char coloredStatus[40];
+            if (o.status == 0) // Pending
+                snprintf(coloredStatus, sizeof(coloredStatus), YELLOW "%s" RESET, statusText);
+            else if (o.status == 1) // Delivered
+                snprintf(coloredStatus, sizeof(coloredStatus), GREEN "%s" RESET, statusText);
+            else
+                snprintf(coloredStatus, sizeof(coloredStatus), "%s", statusText);
+
+            // Address එක shorten කරන්න
+            char shortAddr[21];
+            snprintf(shortAddr, sizeof(shortAddr), "%.20s", o.address);
+
+            printTableRow(5, idStr, shortAddr, itemsStr, totalStr, coloredStatus);
+            found++;
+        }
+    }
+    fclose(file);
+
+    printTableDivider(5);
+
+    if (found == 0)
+    {
+        printf("\n");
+        showInfo("You have no orders yet. Start shopping!");
+    }
+    else
+    {
+        printf("\n  " DIM "Total orders: %d\n" RESET, found);
+    }
+
+    drawFooter();
+    pressEnterToContinue();
+}
+/* Prints every order. Returns count, or -1 if the file can't be opened. */
+static int listAllOrders(void)
+{
+    FILE *file = fopen(ORDERS_FILE, "r");
+    char line[LINE_SIZE];
+    OrderRecord o;
+    int count = 0;
+
+    if (file == NULL)
+        return -1;
+
+    clearScreen();
+    drawHeader("ALL ORDERS - ADMIN VIEW");
+
+    printf("\n");
+    printTableHeader(4, "ID", "CUSTOMER", "TOTAL", "STATUS");
+    printTableDivider(4);
+
+    while (fgets(line, sizeof(line), file) != NULL)
+    {
+        if (parseOrderLine(line, &o))
+        {
+            char idStr[10];
+            char totalStr[20];
+            char customerShort[16];
+            
+            snprintf(idStr, sizeof(idStr), "%d", o.id);
+            snprintf(customerShort, sizeof(customerShort), "%.15s", o.username);
+            snprintf(totalStr, sizeof(totalStr), "Rs.%.2f", o.total);
+            
+            const char* statusText = statusToText(o.status);
+            char coloredStatus[40];
+            if (o.status == 0) // Pending
+                snprintf(coloredStatus, sizeof(coloredStatus), YELLOW "%s" RESET, statusText);
+            else if (o.status == 1) // Delivered/Completed
+                snprintf(coloredStatus, sizeof(coloredStatus), GREEN "%s" RESET, statusText);
+            else if (o.status == 2) // Cancelled
+                snprintf(coloredStatus, sizeof(coloredStatus), RED "%s" RESET, statusText);
+            else
+                snprintf(coloredStatus, sizeof(coloredStatus), "%s", statusText);
+
+            printTableRow(4, idStr, customerShort, totalStr, coloredStatus);
+            count++;
+        }
+    }
+    
+    printTableDivider(4);
+    fclose(file);
+
+    if (count == 0)
+    {
+        printf("\n");
+        showInfo("No orders found in system.");
+    }
+    else
+    {
+        printf("\n  " BOLD WHITE "Total Orders: " GREEN "%d\n" RESET, count);
+    }
+
+    drawFooter();
+    return count;
+}
+/* 1 = updated, -1 = order not found, 0 = file error.
+   Unparseable lines are copied through untouched. */
+static int setOrderStatus(int orderId, int newStatus)
+{
+    FILE *in = fopen(ORDERS_FILE, "r");
+    FILE *out;
+    char line[LINE_SIZE];
+    OrderRecord o;
+    int found = 0, ok = 1;
+
+    if (in == NULL)
+        return 0;
+
+    out = fopen(TEMP_ORDERS_FILE, "w");
+    if (out == NULL)
+    {
+        fclose(in);
+        return 0;
+    }
+
+    while (ok && fgets(line, sizeof(line), in) != NULL)
+    {
+        if (!parseOrderLine(line, &o))
+        {
+            ok = fputs(line, out) != EOF;
+            continue;
+        }
+
+        if (o.id == orderId)
+        {
+            o.status = newStatus;
+            found = 1;
+        }
+        ok = writeOrder(out, &o);
+    }
+
+    if (ferror(in))
+        ok = 0;
+    fclose(in);
+    if (fclose(out) != 0)
+        ok = 0;
+
+    if (!ok || !found)
+    {
+        remove(TEMP_ORDERS_FILE);
+        return ok ? -1 : 0;
+    }
+
+    return replaceFile(TEMP_ORDERS_FILE, ORDERS_FILE) ? 1 : 0;
+}
+
+/* Admin: list all orders, then change one order's status */
+void updateOrderStatus(void)
+{
+    int count = listAllOrders();
+    int orderId, newStatus, r;
+
+    if (count < 0)
+    {
+        printf("\n");
+        showError("No orders found or orders file is unavailable.");
+        pressEnterToContinue();
+        return;
+    }
+    if (count == 0)
+    {
+        printf("\n");
+        showInfo("No valid orders found.");
+        pressEnterToContinue();
+        return;
+    }
+
+    orderId = readChoice("\n" CYAN "❯" RESET " Order ID (0 = cancel): ");
+    if (orderId == 0 || orderId == CHOICE_EOF)
+        return;
+    if (orderId < 0)
+    {
+        showError("Invalid order ID!");
+        pressEnterToContinue();
+        return;
+    }
+
+    printf("\n  " BOLD WHITE "Select New Status:\n" RESET);
+    printf("  " MAGENTA "╭────────────────────────────────╮\n" RESET);
+    printf("  " MAGENTA "│" RESET " " YELLOW "0" RESET " = PENDING   " DIM "(waiting)" RESET "  " MAGENTA "│\n" RESET);
+    printf("  " MAGENTA "│" RESET " " GREEN "1" RESET " = PAID      " DIM "(completed)" RESET " " MAGENTA "│\n" RESET);
+    printf("  " MAGENTA "│" RESET " " CYAN "2" RESET " = SHIPPED   " DIM "(on the way)" RESET " " MAGENTA "│\n" RESET);
+    printf("  " MAGENTA "╰────────────────────────────────╯\n" RESET);
+
+    newStatus = readChoice("  " CYAN "❯" RESET " Enter status: ");
+    if (newStatus < STATUS_PENDING || newStatus > STATUS_SHIPPED)
+    {
+        showError("Invalid status! Choose 0, 1 or 2.");
+        pressEnterToContinue();
+        return;
+    }
+
+    r = setOrderStatus(orderId, newStatus);
+    printf("\n");
+    if (r > 0)
+    {
+        char msg[100];
+        snprintf(msg, sizeof(msg), "Order %d status updated to %s!", orderId, statusToText(newStatus));
+        showSuccess(msg);
+    }
+    else if (r < 0)
+    {
+        char msg[80];
+        snprintf(msg, sizeof(msg), "Order ID %d was not found!", orderId);
+        showError(msg);
+    }
+    else
+    {
+        char msg[120];
+        snprintf(msg, sizeof(msg), "Failed to update orders file '%s'", ORDERS_FILE);
+        showError(msg);
+    }
+    
+    pressEnterToContinue();
+}
+/* ------------------------------------------------------------------ */
+/*  Invoice                                                            */
+/* ------------------------------------------------------------------ */
+
+typedef struct
+{
+    int orderId;
+    const char *username;
+    const char *phone;
+    const char *address;
+    int itemCount;
+    const int *productIds;
+    const int *quantities;
+    const float *unitPrices;
+    float total;
+    float shippingFee;
+    int deliveryMethod;
+    int paymentMethod;
+    char date[40];
+    char tracking[40];
+} InvoiceData;
+
+static int saveInvoiceFile(const InvoiceData *d)
+{
+    char path[300];
+    FILE *f;
+
+    makeDir(DATA_DIR);
+    makeDir(INVOICE_DIR);
+    snprintf(path, sizeof(path), "%s/invoice_%d.txt", INVOICE_DIR, d->orderId);
+
+    f = fopen(path, "w");
+    if (f == NULL)
+    {
+        showWarning("Could not create invoice file.");
+        printf("  " DIM "%s\n" RESET, path);
+        return 0;
+    }
+
+    fprintf(f, "┌────────────────────────────────────────────────┐\n");
+    fprintf(f, "│           S SHOP E-COMMERCE - INVOICE          │\n");
+    fprintf(f, "└────────────────────────────────────────────────┘\n");
+    fprintf(f, "\n");
+    fprintf(f, "  Invoice No : #%06d\n", d->orderId);
+    fprintf(f, "  Date       : %s\n", d->date);
+    fprintf(f, "  Tracking   : %s\n", d->tracking);
+    fprintf(f, "\n");
+    fprintf(f, "──────────────────────────────────────────────────\n");
+    fprintf(f, "  CUSTOMER DETAILS\n");
+    fprintf(f, "──────────────────────────────────────────────────\n");
+    fprintf(f, "  Name       : %s\n", d->username);
+    fprintf(f, "  Phone      : %s\n", d->phone);
+    fprintf(f, "  Address    : %s\n", d->address);
+    fprintf(f, "\n");
+    fprintf(f, "──────────────────────────────────────────────────\n");
+    fprintf(f, "  ORDER ITEMS (%d items)\n", d->itemCount);
+    fprintf(f, "──────────────────────────────────────────────────\n");
+    fprintf(f, "  %-6s %-6s %-10s %-12s\n", "ID", "QTY", "UNIT", "LINE TOTAL");
+    fprintf(f, "  ──────────────────────────────────────────────\n");
+    for (int i = 0; i < d->itemCount; i++)
+        fprintf(f, "  #%-5d x%-4d Rs.%-7.2f Rs.%-8.2f\n", 
+                d->productIds[i],
+                d->quantities[i], 
+                d->unitPrices[i],
+                d->quantities[i] * d->unitPrices[i]);
+    fprintf(f, "  ──────────────────────────────────────────────\n");
+    fprintf(f, "\n");
+    fprintf(f, "──────────────────────────────────────────────────\n");
+    fprintf(f, "  PAYMENT SUMMARY\n");
+    fprintf(f, "──────────────────────────────────────────────────\n");
+    fprintf(f, "  Subtotal      : Rs. %8.2f\n", d->total - d->shippingFee);
+    fprintf(f, "  Shipping      : Rs. %8.2f\n", d->shippingFee);
+    fprintf(f, "                  ──────────\n");
+    fprintf(f, "  TOTAL         : Rs. %8.2f\n", d->total);
+    fprintf(f, "\n");
+    fprintf(f, "  Delivery      : %s\n", deliveryMethodText(d->deliveryMethod));
+    fprintf(f, "  Payment       : %s\n", paymentMethodText(d->paymentMethod));
+    fprintf(f, "\n");
+    fprintf(f, "┌────────────────────────────────────────────────┐\n");
+    fprintf(f, "│     Thank you for shopping with NORDIC!        │\n");
+    fprintf(f, "│         www.S-shop.com                   │\n");
+    fprintf(f, "└────────────────────────────────────────────────┘\n");
+
+    int ok = fclose(f) == 0;
+    if (ok)
+    {
+        printf("\n");
+        char msg[150];
+        snprintf(msg, sizeof(msg), "Invoice saved: invoice_%d.txt", d->orderId);
+        showSuccess(msg);
+        printf("  " DIM "%s\n" RESET, path);
+    }
+    return ok;
+}static void boxEdge(const char *left, const char *right)
+{
+    printf(OR_CYAN "%s", left);
+    for (int i = 0; i < INVOICE_WIDTH; i++)
+        printf(BOX_H);
+    printf("%s" OR_RESET "\n", right);
+}
+
+static void boxRowf(const char *color, const char *fmt, ...)
+{
+    char text[160];
+    va_list ap;
+
+    va_start(ap, fmt);
+    vsnprintf(text, sizeof(text), fmt, ap);
+    va_end(ap);
+
+    printf(OR_CYAN BOX_V OR_RESET "%s%-*.*s" OR_RESET OR_CYAN BOX_V OR_RESET "\n",
+           color, INVOICE_WIDTH, INVOICE_WIDTH, text);
+}
+
+static void printInvoiceBox(const InvoiceData *d)
+{
+    boxEdge(BOX_TL, BOX_TR);
+    boxRowf(OR_BOLD OR_GREEN, "   ORDER CONFIRMED");
+    boxEdge(BOX_ML, BOX_MR);
+    boxRowf("", "  Invoice  : #%d", d->orderId);
+    boxRowf("", "  Date     : %s", d->date);
+    boxRowf(OR_YELLOW, "  Tracking : %s", d->tracking);
+    boxEdge(BOX_ML, BOX_MR);
+    boxRowf("", "  Customer : %s", d->username);
+    boxRowf("", "  Phone    : %s", d->phone);
+    boxRowf("", "  Address  : %.33s", d->address);
+    boxEdge(BOX_ML, BOX_MR);
+    for (int i = 0; i < d->itemCount; i++)
+        boxRowf("", "  #%-5d x%-3d @ Rs.%-8.2f = Rs.%.2f", d->productIds[i],
+                d->quantities[i], d->unitPrices[i],
+                d->quantities[i] * d->unitPrices[i]);
+    boxEdge(BOX_ML, BOX_MR);
+    boxRowf("", "  Subtotal : Rs. %.2f", d->total - d->shippingFee);
+    if (d->shippingFee > 0.0f)
+        boxRowf("", "  Shipping : Rs. %.2f", d->shippingFee);
+    else
+        boxRowf(OR_GREEN, "  Shipping : FREE");
+    boxRowf(OR_BOLD, "  Total    : Rs. %.2f", d->total);
+    boxRowf("", "  Delivery : %s", deliveryMethodText(d->deliveryMethod));
+    boxRowf("", "  Payment  : %s", paymentMethodText(d->paymentMethod));
+    boxEdge(BOX_ML, BOX_MR);
+    boxRowf(OR_GREEN, "      Thank you for shopping with us!");
+    boxEdge(BOX_BL, BOX_BR);
+}
+
 void generateInvoice(int orderId,
                      const char *username,
                      const char *phoneNumber,
@@ -657,444 +801,46 @@ void generateInvoice(int orderId,
                      int deliveryMethod,
                      int paymentMethod)
 {
-    const char *invoiceDir = "data/invoices";
-    const char *invoiceFileName = "invoice";
-    char invoicePath[300];
-
-    sprintf(invoicePath, "%s/%s_%d.txt", invoiceDir, invoiceFileName, orderId);
-
-#ifdef _WIN32
-    _mkdir(invoiceDir);
-#else
-    mkdir(invoiceDir, 0755);
-#endif
-
-    FILE *file = fopen(invoicePath, "w");
-
-    if (file == NULL)
-    {
-        printf("\n[Error] Could not create invoice file!\n");
-        printf("Invoice path: %s\n", invoicePath);
-        return;
-    }
-
+    InvoiceData d;
     time_t now = time(NULL);
-    char dateStr[40];
-    strftime(dateStr, sizeof(dateStr), "%d-%m-%Y %H:%M", localtime(&now));
+    struct tm *tm = localtime(&now);
 
-    char trackingNumber[40];
-    sprintf(trackingNumber, "TRK%06d", orderId);
+    d.orderId = orderId;
+    d.username = username;
+    d.phone = phoneNumber;
+    d.address = address;
+    d.itemCount = itemCount;
+    d.productIds = productIds;
+    d.quantities = quantities;
+    d.unitPrices = unitPrices;
+    d.total = totalAmount;
+    d.shippingFee = shippingFee;
+    d.deliveryMethod = deliveryMethod;
+    d.paymentMethod = paymentMethod;
 
-    /* --- Save to file --- */
-    fprintf(file, "================================================\n");
-    fprintf(file, "                   INVOICE\n");
-    fprintf(file, "================================================\n");
-    fprintf(file, " Invoice  : #%d\n", orderId);
-    fprintf(file, " Date     : %s\n", dateStr);
-    fprintf(file, " Tracking : %s\n", trackingNumber);
-    fprintf(file, "------------------------------------------------\n");
-    fprintf(file, " Customer : %s\n", username);
-    fprintf(file, " Phone    : %s\n", phoneNumber);
-    fprintf(file, " Address  : %s\n", address);
-    fprintf(file, "------------------------------------------------\n");
-    for (int i = 0; i < itemCount; i++)
-    {
-        float invSubF = quantities[i] * unitPrices[i];
-        fprintf(file, " #%-4d : %dx Rs.%.2f = Rs.%.2f\n",
-                productIds[i], quantities[i], unitPrices[i], invSubF);
-    }
-    fprintf(file, "------------------------------------------------\n");
-    fprintf(file, " Subtotal : Rs. %.2f\n", totalAmount - shippingFee);
-    fprintf(file, " Shipping : Rs. %.2f\n", shippingFee);
-    fprintf(file, " TOTAL    : Rs. %.2f\n", totalAmount);
-    fprintf(file, " Delivery : %s\n", deliveryMethodText(deliveryMethod));
-    fprintf(file, " Payment  : %s\n", paymentMethodText(paymentMethod));
-    fprintf(file, "================================================\n");
-    fprintf(file, "      Thank you for shopping with us!\n");
-    fprintf(file, "================================================\n");
-    fclose(file);
-
-    /* --- Screen confirmation box --- */
-    printf("\x1b[36m\xe2\x95\x94\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x97\x1b[0m\n");
-    printf("\x1b[36m\xe2\x95\x91\x1b[0m  \x1b[1;32m   ORDER CONFIRMED  \xe2\x9c\x93                       \x1b[0m\x1b[36m\xe2\x95\x91\x1b[0m\n");
-    printf("\x1b[36m\xe2\x95\xa0\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\xa3\x1b[0m\n");
-    printf("\x1b[36m\xe2\x95\x91\x1b[0m  Invoice  : \x1b[1m#%-33d\x1b[0m\x1b[36m\xe2\x95\x91\x1b[0m\n", orderId);
-    printf("\x1b[36m\xe2\x95\x91\x1b[0m  Date     : %-33s\x1b[36m\xe2\x95\x91\x1b[0m\n", dateStr);
-    printf("\x1b[36m\xe2\x95\x91\x1b[0m  Tracking : \x1b[33m%-33s\x1b[0m\x1b[36m\xe2\x95\x91\x1b[0m\n", trackingNumber);
-    printf("\x1b[36m\xe2\x95\xa0\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\xa3\x1b[0m\n");
-    printf("\x1b[36m\xe2\x95\x91\x1b[0m  Customer : %-33s\x1b[36m\xe2\x95\x91\x1b[0m\n", username);
-    printf("\x1b[36m\xe2\x95\x91\x1b[0m  Phone    : %-33s\x1b[36m\xe2\x95\x91\x1b[0m\n", phoneNumber);
-    printf("\x1b[36m\xe2\x95\x91\x1b[0m  Address  : %-33.33s\x1b[36m\xe2\x95\x91\x1b[0m\n", address);
-    printf("\x1b[36m\xe2\x95\xa0\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\xa3\x1b[0m\n");
-    for (int i = 0; i < itemCount; i++)
-    {
-        float invSub2 = quantities[i] * unitPrices[i];
-        char invPid[12];
-        sprintf(invPid, "#%d", productIds[i]);
-        printf("\x1b[36m\xe2\x95\x91\x1b[0m  %-6s  x%-3d  @ Rs.%-7.2f = Rs.%-7.2f   \x1b[36m\xe2\x95\x91\x1b[0m\n",
-               invPid, quantities[i], unitPrices[i], invSub2);
-    }
-    printf("\x1b[36m\xe2\x95\xa0\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\xa3\x1b[0m\n");
-    printf("\x1b[36m\xe2\x95\x91\x1b[0m  Subtotal  : Rs. %-27.2f \x1b[36m\xe2\x95\x91\x1b[0m\n", totalAmount - shippingFee);
-    if (shippingFee > 0.0f)
-        printf("\x1b[36m\xe2\x95\x91\x1b[0m  Shipping  : Rs. %-27.2f \x1b[36m\xe2\x95\x91\x1b[0m\n", shippingFee);
+    if (tm != NULL)
+        strftime(d.date, sizeof(d.date), "%d-%m-%Y %H:%M", tm);
     else
-        printf("\x1b[36m\xe2\x95\x91\x1b[0m  Shipping  : \x1b[32mFREE%-30s\x1b[0m\x1b[36m\xe2\x95\x91\x1b[0m\n", "");
-    printf("\x1b[36m\xe2\x95\x91\x1b[0m  \x1b[1mTotal\x1b[0m     : \x1b[1mRs. %-27.2f\x1b[0m \x1b[36m\xe2\x95\x91\x1b[0m\n", totalAmount);
-    printf("\x1b[36m\xe2\x95\x91\x1b[0m  Delivery  : %-33s\x1b[36m\xe2\x95\x91\x1b[0m\n", deliveryMethodText(deliveryMethod));
-    printf("\x1b[36m\xe2\x95\x91\x1b[0m  Payment   : %-33s\x1b[36m\xe2\x95\x91\x1b[0m\n", paymentMethodText(paymentMethod));
-    printf("\x1b[36m\xe2\x95\xa0\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\xa3\x1b[0m\n");
-    printf("\x1b[36m\xe2\x95\x91\x1b[0m  \x1b[32m      Thank you for shopping with us!          \x1b[0m\x1b[36m\xe2\x95\x91\x1b[0m\n");
-    printf("\x1b[36m\xe2\x95\x9a\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x90\xe2\x95\x9d\x1b[0m\n");
+        snprintf(d.date, sizeof(d.date), "-");
+    snprintf(d.tracking, sizeof(d.tracking), "TRK%06d", orderId);
+
+    saveInvoiceFile(&d);
+    printInvoiceBox(&d);
 }
 
+/* ------------------------------------------------------------------ */
+/*  Customer details (users file)                                      */
+/*  Format: id|name|password|email|phone|address|role|active           */
+/* ------------------------------------------------------------------ */
 
-
-//checkout directly
-static int pendingProductId = -1;
-static int pendingQuantity = 0;
-static float pendingUnitPrice = 0.0f;
-
-void startDirectCheckout(const char *username,
-                         int productId,
-                         int quantity,
-                         float unitPrice)
-{
-    pendingProductId = productId;
-    pendingQuantity = quantity;
-    pendingUnitPrice = unitPrice;
-
-    checkout(username);
-}
-
-void checkout(const char *username)
-{
-    #define MAX_CHECKOUT_ITEMS 100
-
-    char line[512];
-    char phoneNumber[30];
-    char address[200];
-
-    int productIds[MAX_CHECKOUT_ITEMS];
-    int quantities[MAX_CHECKOUT_ITEMS];
-    float unitPrices[MAX_CHECKOUT_ITEMS];
-
-    int itemCount = 0;
-    float totalAmount = 0.0f;
-
-    if (username == NULL || username[0] == '\0')
-    {
-        printf("Invalid customer account.\n");
-        return;
-    }
-
-    if (pendingProductId > 0)
-    {
-        productIds[0] = pendingProductId;
-        quantities[0] = pendingQuantity;
-        unitPrices[0] = pendingUnitPrice;
-        itemCount = 1;
-    }
-    else
-    {
-    FILE *cartFile = fopen("data/cart.txt", "r");
-
-    if (cartFile == NULL)
-    {
-        printf("Unable to open cart file.\n");
-        return;
-    }
-
-    /* Read this customer's cart */
-    while (fgets(line, sizeof(line), cartFile) != NULL)
-    {
-        char cartUsername[50];
-        char productName[50];
-
-        int productId;
-        int quantity;
-        float unitPrice;
-        float subtotal;
-
-        if (sscanf(line, "%49[^|]|%d|%49[^|]|%d|%f|%f",
-                   cartUsername, &productId, productName,
-                   &quantity, &unitPrice, &subtotal) != 6)
-        {
-            continue;
-        }
-
-        if (strcmp(cartUsername, username) != 0)
-            continue;
-
-        if (productId <= 0 || quantity <= 0 ||
-            unitPrice <= 0.0f)
-        {
-            fclose(cartFile);
-            printf("Invalid item found in your cart.\n");
-            return;
-        }
-
-        int index = -1;
-
-        for (int i = 0; i < itemCount; i++)
-        {
-            if (productIds[i] == productId)
-            {
-                index = i;
-                break;
-            }
-        }
-
-        if (index >= 0)
-        {
-            if (quantities[index] > 2147483647 - quantity)
-            {
-                fclose(cartFile);
-                printf("Cart quantity is too large.\n");
-                return;
-            }
-
-            quantities[index] += quantity;
-        }
-        else
-        {
-            if (itemCount >= MAX_CHECKOUT_ITEMS)
-            {
-                fclose(cartFile);
-                printf("Too many products in your cart.\n");
-                return;
-            }
-
-            productIds[itemCount] = productId;
-            quantities[itemCount] = quantity;
-            unitPrices[itemCount] = unitPrice;
-
-            itemCount++;
-        }
-    }
-
-    if (ferror(cartFile))
-    {
-        fclose(cartFile);
-        printf("Error reading cart file.\n");
-        return;
-    }
-
-    fclose(cartFile);
-
-    if (itemCount == 0)
-    {
-        printf("Your cart is empty.\n");
-        return;
-    }
-    }
-
-    //Validate stock
-    for (int i = 0; i < itemCount; i++)
-    {
-        if (!checkStockAvailability(productIds[i],
-                                    quantities[i]))
-        {
-            printf("Insufficient stock for Product ID %d.\n",
-                   productIds[i]);
-            return;
-        }
-    }
-
-
-
-   //Calculate total
-    order_process(quantities, itemCount,
-                  unitPrices, &totalAmount);
-
-    if (totalAmount <= 0.0f)
-    {
-        printf("Invalid order total.\n");
-        return;
-    }
-
-    int step = 1;
-    int deliveryMethod = 1;
-    float shippingFee = 0.0f;
-    float grandTotal = totalAmount;
-
-    char savedPhone[30] = {0};
-    char savedAddress[200] = {0};
-    int hasSavedDetails = getCustomerDetails(username,
-                                             savedPhone, sizeof(savedPhone),
-                                             savedAddress, sizeof(savedAddress));
-
-    phoneNumber[0] = '\0';
-    address[0] = '\0';
-
-    while (step == 1)
-    {
-        clearScreen();
-        drawHeader("CHECKOUT");
-        printf("\x1b[2m  Cart total: Rs. %.2f\x1b[0m\n\n", totalAmount);
-        printf("DELIVERY METHOD\n\n");
-        printf("1. Standard Shipping - Rs. %.2f (5-8 days)\n", STANDARD_SHIPPING_FEE);
-        printf("2. Express Shipping - Rs. %.2f (2-4 days)\n", EXPRESS_SHIPPING_FEE);
-        if (totalAmount >= FREE_SHIPPING_OVER)
-    
-        printf("\n0. Back\n");
-        printf("Select: ");
-
-        int choice = -1;
-        if (scanf("%d", &choice) != 1)
-        {
-            while (getchar() != '\n' && !feof(stdin)) {}
-            continue;
-        }
-        while (getchar() != '\n' && !feof(stdin)) {}
-
-        if (choice == 0) return;
-        if (choice == 1 || choice == 2)
-        {
-            deliveryMethod = choice;
-            shippingFee = getDeliveryFee(deliveryMethod, totalAmount);
-            grandTotal = totalAmount + shippingFee;
-            step = 2;
-            continue;
-        }
-        printf("Invalid choice\n");
-        printf("Press Enter to continue...");
-        while (getchar() != '\n' && !feof(stdin)) {}
-    }
-
-    while (step == 2)
-    {
-        clearScreen();
-        drawHeader("CHECKOUT");
-        printf("\x1b[2m  Subtotal: Rs. %.2f  |  Shipping: Rs. %.2f  |  Total: Rs. %.2f\x1b[0m\n\n", totalAmount, shippingFee, grandTotal);
-        printf("SHIPPING DETAILS\n\n");
-        if (hasSavedDetails)
-        {
-            printf("Saved Phone   : %s\n", savedPhone);
-            printf("Saved Address : %s\n\n", savedAddress);
-            printf("1. Use saved details\n");
-            printf("2. Enter new shipping details\n");
-            printf("\n0. Back\n");
-            printf("Select: ");
-
-            int sc = -1;
-            if (scanf("%d", &sc) != 1)
-            {
-                while (getchar() != '\n' && !feof(stdin)) {}
-                continue;
-            }
-            while (getchar() != '\n' && !feof(stdin)) {}
-
-            if (sc == 0) { step = 1; continue; }
-            if (sc == 1)
-            {
-                strcpy(phoneNumber, savedPhone);
-                strcpy(address, savedAddress);
-                step = 3;
-                continue;
-            }
-            if (sc == 2)
-            {
-                printf("\nPhone: ");
-                if (scanf("%29s", phoneNumber) != 1) { while (getchar()!='\n'&&!feof(stdin)){} phoneNumber[0]='\0'; }
-                while (getchar() != '\n' && !feof(stdin)) {}
-                printf("Address: ");
-                if (scanf(" %199[^\n]", address) != 1) { while (getchar()!='\n'&&!feof(stdin)){} address[0]='\0'; }
-                while (getchar() != '\n' && !feof(stdin)) {}
-                if (phoneNumber[0] && address[0]) { step = 3; continue; }
-                printf("Invalid details\n");
-                printf("Press Enter to continue...");
-                while (getchar() != '\n' && !feof(stdin)) {}
-                continue;
-            }
-            printf("Invalid choice\n");
-            printf("Press Enter to continue...");
-            while (getchar() != '\n' && !feof(stdin)) {}
-            continue;
-        }
-        else
-        {
-            printf("Phone: ");
-            if (scanf("%29s", phoneNumber) != 1) { while (getchar()!='\n'&&!feof(stdin)){} phoneNumber[0]='\0'; }
-            while (getchar() != '\n' && !feof(stdin)) {}
-            printf("Address: ");
-            if (scanf(" %199[^\n]", address) != 1) { while (getchar()!='\n'&&!feof(stdin)){} address[0]='\0'; }
-            while (getchar() != '\n' && !feof(stdin)) {}
-            if (phoneNumber[0] && address[0]) { step = 3; continue; }
-            printf("\n0. Back\n");
-            printf("Select 0 to go back or retry: ");
-            int bx = -1;
-            if (scanf("%d",&bx)==1 && bx==0){while(getchar()!='\n'&&!feof(stdin)){} step=1; continue;}
-            while (getchar() != '\n' && !feof(stdin)) {}
-            continue;
-        }
-    }
-
-    while (step == 3)
-    {
-        clearScreen();
-        drawHeader("CHECKOUT");
-        printf("\x1b[2m  Grand Total: Rs. %.2f\x1b[0m\n\n", grandTotal);
-        printf("PAYMENT METHOD\n\n");
-        printf("1. Cash on Delivery (Pay on delivery)\n");
-        printf("\n0. Back\n");
-        printf("Select: ");
-        int pc = -1;
-        if (scanf("%d",&pc)!=1){ while(getchar()!='\n'&&!feof(stdin)){} continue;}
-        while(getchar()!='\n'&&!feof(stdin)){}
-        if (pc == 0){ step = 2; continue; }
-        if (pc == 1)
-        {
-            int paymentMethod = PAYMENT_COD;
-            clearScreen();
-            drawHeader("CHECKOUT");
-            printf("\n\x1b[1mORDER SUMMARY\x1b[0m\n\n");
-            printf("Customer : %s\n", username);
-            printf("Phone    : %s\n", phoneNumber);
-            printf("Address  : %s\n\n", address);
-            printf("Subtotal : Rs. %.2f\n", totalAmount);
-            printf("Shipping : Rs. %.2f\n", shippingFee);
-            printf("Total    : Rs. %.2f\n", grandTotal);
-            printf("Delivery : %s\n", deliveryMethodText(deliveryMethod));
-            printf("Payment  : CASH ON DELIVERY\n\n");
-            printf("Confirm order? (y/n): ");
-
-            char confirmation;
-            if (scanf(" %c", &confirmation) != 1) { while(getchar()!='\n'&&!feof(stdin)){} return; }
-            while(getchar()!='\n'&&!feof(stdin)){}
-            if (confirmation != 'y' && confirmation != 'Y'){ printf("Checkout cancelled.\n"); printf("Press Enter to continue..."); while(getchar()!='\n'&&!feof(stdin)){} return; }
-
-            for (int i = 0; i < itemCount; i++)
-            {
-                if (!checkStockAvailability(productIds[i], quantities[i])){ printf("Stock changed. Order cancelled.\n"); printf("Press Enter to continue..."); while(getchar()!='\n'&&!feof(stdin)){} return; }
-            }
-
-            int newOrderId = 0;
-            if (!placeOrder((char *)username, phoneNumber, address, itemCount, grandTotal, &newOrderId)){ printf("Order failed.\n"); printf("Press Enter to continue..."); while(getchar()!='\n'&&!feof(stdin)){} return; }
-
-            generateInvoice(newOrderId, (char *)username, phoneNumber, address, itemCount, productIds, quantities, unitPrices, grandTotal, shippingFee, deliveryMethod, paymentMethod);
-
-            for (int i = 0; i < itemCount; i++) updateStockAfterPurchase(productIds[i], quantities[i]);
-            clearCart(username);
-            printf("\n");
-            printf("Press Enter to continue...");
-            while(getchar()!='\n'&&!feof(stdin)){}
-            return;
-        }
-        printf("Invalid choice\n");
-        printf("Press Enter to continue...");
-        while (getchar() != '\n' && !feof(stdin)) {}
-    }
-}
-
-int getCustomerDetails(
-    const char *username,
-    char *phoneNumber,
-    size_t phoneSize,
-    char *address,
-    size_t addressSize)
+int getCustomerDetails(const char *username,
+                       char *phoneNumber, size_t phoneSize,
+                       char *address, size_t addressSize)
 {
     FILE *file = fopen(USERS_FILE, "r");
+    char line[LINE_SIZE];
+    char *f[8];
+    int found = 0;
 
     if (file == NULL)
     {
@@ -1102,48 +848,419 @@ int getCustomerDetails(
         return 0;
     }
 
-    char line[500];
-    int found = 0;
-
-    while (fgets(line, sizeof(line), file) != NULL)
+    while (!found && fgets(line, sizeof(line), file) != NULL)
     {
         line[strcspn(line, "\r\n")] = '\0';
 
-        char *id       = strtok(line, "|");
-        char *name     = strtok(NULL, "|");
-        char *password = strtok(NULL, "|");
-        char *email    = strtok(NULL, "|");
-        char *phone    = strtok(NULL, "|");
-        char *userAddress = strtok(NULL, "|");
-        char *role     = strtok(NULL, "|");
-        char *active   = strtok(NULL, "|");
-
-        if (id == NULL || name == NULL ||
-            password == NULL || email == NULL ||
-            phone == NULL || userAddress == NULL ||
-            role == NULL || active == NULL)
-        {
+        if (splitFields(line, f, 8) != 8)
             continue;
-        }
 
-        if (strcmp(name, username) == 0 &&
-            strcmp(active, "1") == 0)
+        if (strcmp(f[1], username) == 0 && strcmp(f[7], "1") == 0 &&
+            f[4][0] != '\0' && f[5][0] != '\0' &&
+            strlen(f[4]) < phoneSize && strlen(f[5]) < addressSize)
         {
-            if (strlen(phone) >= phoneSize ||
-                strlen(userAddress) >= addressSize)
-            {
-                fclose(file);
-                return 0;
-            }
-
-            strcpy(phoneNumber, phone);
-            strcpy(address, userAddress);
-
+            snprintf(phoneNumber, phoneSize, "%s", f[4]);
+            snprintf(address, addressSize, "%s", f[5]);
             found = 1;
-            break;
         }
     }
 
     fclose(file);
     return found;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Checkout                                                           */
+/* ------------------------------------------------------------------ */
+
+/* Returns the first product ID with too little stock, or 0 if all OK. */
+static int findShortStock(const CheckoutItems *it)
+{
+    for (int i = 0; i < it->count; i++)
+        if (!checkStockAvailability(it->productIds[i], it->quantities[i]))
+            return it->productIds[i];
+    return 0;
+}
+
+/* Loads this customer's cart (merging duplicate products). 1 = ok. */
+static int loadCartItems(const char *username, CheckoutItems *it)
+{
+    FILE *file = fopen(CART_DATA_FILE, "r");
+    char line[LINE_SIZE];
+    const char *error = NULL;
+
+    it->count = 0;
+
+    if (file == NULL)
+    {
+        printf("Unable to open cart file.\n");
+        return 0;
+    }
+
+    while (error == NULL && fgets(line, sizeof(line), file) != NULL)
+    {
+        char cartUser[50], productName[50];
+        int productId, quantity, i;
+        float unitPrice, subtotal;
+
+        if (sscanf(line, "%49[^|]|%d|%49[^|]|%d|%f|%f",
+                   cartUser, &productId, productName,
+                   &quantity, &unitPrice, &subtotal) != 6 ||
+            strcmp(cartUser, username) != 0)
+            continue;
+
+        if (productId <= 0 || quantity <= 0 || unitPrice <= 0.0f)
+        {
+            error = "Invalid item found in your cart.";
+            break;
+        }
+
+        for (i = 0; i < it->count; i++)
+        {
+            if (it->productIds[i] == productId)
+                break;
+        }
+
+        if (i < it->count)
+        {
+            if (it->quantities[i] > INT_MAX - quantity)
+                error = "Cart quantity is too large.";
+            else
+                it->quantities[i] += quantity;
+        }
+        else if (it->count >= MAX_CHECKOUT_ITEMS)
+        {
+            error = "Too many products in your cart.";
+        }
+        else
+        {
+            it->productIds[i] = productId;
+            it->quantities[i] = quantity;
+            it->unitPrices[i] = unitPrice;
+            it->count++;
+        }
+    }
+
+    if (error == NULL && ferror(file))
+        error = "Error reading cart file.";
+    fclose(file);
+
+    if (error != NULL)
+    {
+        printf("%s\n", error);
+        return 0;
+    }
+    if (it->count == 0)
+    {
+        printf("Your cart is empty.\n");
+        return 0;
+    }
+    return 1;
+}
+
+/* Step 1. Returns 1 = chosen, 0 = back. */
+static int selectDelivery(float subtotal, int *method)
+{
+    for (;;)
+    {
+        int c;
+
+        clearScreen();
+        drawHeader("CHECKOUT");
+        printf(OR_DIM "  Cart total: Rs. %.2f" OR_RESET "\n\n", subtotal);
+        printf("DELIVERY METHOD\n\n");
+        printf("1. Standard Shipping - Rs. %.2f (5-8 days)", STANDARD_SHIPPING_FEE);
+        if (subtotal >= FREE_SHIPPING_OVER)
+            printf("  -> FREE for this order!");
+        printf("\n2. Express Shipping - Rs. %.2f (2-4 days)\n", EXPRESS_SHIPPING_FEE);
+        printf("\n0. Back\n");
+
+        c = readChoice("Select: ");
+        if (c == 0 || c == CHOICE_EOF)
+            return 0;
+        if (c == DELIVERY_STANDARD || c == DELIVERY_EXPRESS)
+        {
+            *method = c;
+            return 1;
+        }
+        invalidChoice();
+    }
+}
+
+static DetailsResult enterNewDetails(ShippingInfo *s)
+{
+    printf("\nPhone (empty = back): ");
+    if (!inputLine(s->phone, sizeof(s->phone)) || s->phone[0] == '\0')
+        return DETAILS_BACK;
+
+    printf("Address: ");
+    if (!inputLine(s->address, sizeof(s->address)))
+        return DETAILS_BACK;
+
+    return (validField(s->phone) && validField(s->address))
+               ? DETAILS_OK : DETAILS_INVALID;
+}
+
+/* Step 2. Returns 1 = details chosen, 0 = back. */
+static int selectShipping(int hasSaved, const ShippingInfo *saved,
+                          ShippingInfo *chosen, float subtotal, float fee)
+{
+    for (;;)
+    {
+        DetailsResult r;
+        clearScreen();
+        drawHeader("CHECKOUT - SHIPPING");
+
+        // Price summary card
+        printf("\n  " MAGENTA "╭──────────────────────────────────────────╮\n" RESET);
+          printf("  " MAGENTA "│" RESET "  Subtotal: " WHITE "Rs. %-8.2f" RESET " Shipping: " YELLOW "Rs. %-6.2f" RESET " " MAGENTA "│\n" RESET, subtotal, fee);
+          printf("  " MAGENTA "│" RESET "  Total:    " BOLD GREEN "Rs. %-8.2f" RESET "                         " MAGENTA "│\n" RESET, subtotal + fee);
+          printf("  " MAGENTA "╰──────────────────────────────────────────╯\n" RESET);
+
+        printf("\n  " BOLD WHITE "SHIPPING DETAILS\n\n" RESET);
+
+        if (hasSaved)
+        {
+            int c;
+
+            printf("  " MAGENTA "╭──────────────────────────────────────────╮\n" RESET);
+            printf("  " MAGENTA "│" RESET " " DIM "SAVED ADDRESS" RESET "                              " MAGENTA "│\n" RESET);
+            printf("  " MAGENTA "│" RESET "  Phone   : " CYAN "%-28.28s" RESET " " MAGENTA "│\n" RESET, saved->phone);
+            printf("  " MAGENTA "│" RESET "  Address : " CYAN "%-28.28s" RESET " " MAGENTA "│\n" RESET, saved->address);
+            printf("  " MAGENTA "╰──────────────────────────────────────────╯\n" RESET);
+
+            printf("\n  " CYAN "1" RESET ". Use saved details " DIM "(quick checkout)" RESET "\n");
+            printf("  " CYAN "2" RESET ". Enter new shipping details\n");
+            printf("  " RED "0" RESET ". Back to cart\n");
+
+            c = readChoice("\n  " CYAN "❯" RESET " Select: ");
+            if (c == 0 || c == CHOICE_EOF)
+                return 0;
+            if (c == 1)
+            {
+                *chosen = *saved;
+                showSuccess("Using saved shipping details.");
+                return 1;
+            }
+            if (c != 2)
+            {
+                invalidChoice();
+                continue;
+            }
+        }
+
+        r = enterNewDetails(chosen);
+        if (r == DETAILS_OK)
+            return 1;
+        if (r == DETAILS_BACK)
+        {
+            if (hasSaved)
+                continue;
+            return 0;
+        }
+
+        showError("Invalid details (address is required, '|' is not allowed)");
+        pressEnterToContinue();
+    }
+}
+/* Step 3. Returns 1 = cash on delivery chosen, 0 = back. */
+static int selectPayment(float grandTotal)
+{
+    for (;;)
+    {
+        int c;
+        clearScreen();
+        drawHeader("CHECKOUT - PAYMENT");
+
+        // Grand Total Card
+        printf("\n  " MAGENTA "╭──────────────────────────────────────────╮\n" RESET);
+          printf("  " MAGENTA "│" RESET "  Amount to Pay: " BOLD GREEN "Rs. %-10.2f" RESET "              " MAGENTA "│\n" RESET, grandTotal);
+          printf("  " MAGENTA "╰──────────────────────────────────────────╯\n" RESET);
+
+        printf("\n  " BOLD WHITE "PAYMENT METHOD\n\n" RESET);
+
+        printf("  " MAGENTA "╭──────────────────────────────────────────╮\n" RESET);
+        printf("  " MAGENTA "│" RESET "  " BOLD CYAN "1" RESET ". " WHITE "Cash on Delivery" RESET "                      " MAGENTA "│\n" RESET);
+        printf("  " MAGENTA "│" RESET "     " DIM "Pay when you receive the order" RESET "      " MAGENTA "│\n" RESET);
+        printf("  " MAGENTA "│" RESET "     " GREEN "✓ No extra charges" RESET "                    " MAGENTA "│\n" RESET);
+        printf("  " MAGENTA "╰──────────────────────────────────────────╯\n" RESET);
+
+        printf("\n  " RED "0" RESET ". Back\n");
+
+        c = readChoice("\n  " CYAN "❯" RESET " Select: ");
+        if (c == 0 || c == CHOICE_EOF)
+            return 0;
+        if (c == PAYMENT_COD)
+        {
+            showSuccess("Cash on Delivery selected.");
+            return 1;
+        }
+        invalidChoice();
+    }
+}
+static int confirmOrder(const char *username, const ShippingInfo *s,
+                        float subtotal, float fee, int deliveryMethod)
+{
+    char answer[8];
+
+    clearScreen();
+    drawHeader("CHECKOUT - CONFIRMATION");
+
+    printf("\n  " BOLD WHITE "ORDER SUMMARY\n" RESET);
+    printf("  " MAGENTA "╭──────────────────────────────────────────╮\n" RESET);
+    printf("  " MAGENTA "│" RESET " Customer : " CYAN "%-28.28s" RESET " " MAGENTA "│\n" RESET, username);
+    printf("  " MAGENTA "│" RESET " Phone    : " CYAN "%-28.28s" RESET " " MAGENTA "│\n" RESET, s->phone);
+    printf("  " MAGENTA "│" RESET " Address  : " CYAN "%-28.28s" RESET " " MAGENTA "│\n" RESET, s->address);
+    printf("  " MAGENTA "│" RESET " " DIM "──────────────────────────────────────" RESET " " MAGENTA "│\n" RESET);
+    printf("  " MAGENTA "│" RESET " Subtotal : " WHITE "Rs. %-8.2f" RESET "                  " MAGENTA "│\n" RESET, subtotal);
+    printf("  " MAGENTA "│" RESET " Shipping : " YELLOW "Rs. %-8.2f" RESET "                  " MAGENTA "│\n" RESET, fee);
+    printf("  " MAGENTA "│" RESET " Delivery : " CYAN "%-28.28s" RESET " " MAGENTA "│\n" RESET, deliveryMethodText(deliveryMethod));
+    printf("  " MAGENTA "│" RESET " Payment  : " CYAN "%-28.28s" RESET " " MAGENTA "│\n" RESET, paymentMethodText(PAYMENT_COD));
+    printf("  " MAGENTA "│" RESET "          " DIM "──────────────────────" RESET "          " MAGENTA "│\n" RESET);
+    printf("  " MAGENTA "│" RESET " " BOLD "TOTAL    : " GREEN "Rs. %-8.2f" RESET "                  " MAGENTA "│\n" RESET, subtotal + fee);
+    printf("  " MAGENTA "╰──────────────────────────────────────────╯\n" RESET);
+
+    printf("\n");
+    printf("  " BOLD WHITE "Confirm order? " RESET DIM "(y/n): " RESET);
+
+    if (inputLine(answer, sizeof(answer)) && (answer[0] == 'y' || answer[0] == 'Y'))
+    {
+        showSuccess("Order confirmed! Processing...");
+        return 1;
+    }
+
+    showWarning("Checkout cancelled.");
+    pressEnterToContinue();
+    return 0;
+}
+/* Places the order, writes the invoice and reduces stock. 1 = success. */
+static int submitOrder(const char *username, const CheckoutItems *it,
+                       const ShippingInfo *s, float subtotal, float fee,
+                       int deliveryMethod)
+{
+    float grandTotal = subtotal + fee;
+    int orderId = 0;
+    int shortId = findShortStock(it);
+
+    if (shortId != 0)
+    {
+        printf("Stock changed (Product ID %d). Order cancelled.\n", shortId);
+        pressEnterToContinue();
+        return 0;
+    }
+
+    if (!placeOrder(username, s->phone, s->address, it->count, grandTotal, &orderId))
+    {
+        printf("Order failed.\n");
+        pressEnterToContinue();
+        return 0;
+    }
+
+    generateInvoice(orderId, username, s->phone, s->address, it->count,
+                    it->productIds, it->quantities, it->unitPrices,
+                    grandTotal, fee, deliveryMethod, PAYMENT_COD);
+
+    for (int i = 0; i < it->count; i++)
+    {
+        if (!updateStockAfterPurchase(it->productIds[i], it->quantities[i]))
+            printf(YELLOW "[Warning] Could not update stock for Product ID %d.\n" RESET,
+                   it->productIds[i]);
+    }
+
+    printf("\n");
+    pressEnterToContinue();
+    return 1;
+}
+
+/* Delivery -> shipping -> payment -> confirm. Returns 1 if order placed. */
+static int runCheckout(const char *username, CheckoutItems *items)
+{
+    ShippingInfo saved = {{0}, {0}};
+    ShippingInfo chosen = {{0}, {0}};
+    float subtotal = 0.0f, fee = 0.0f;
+    int deliveryMethod = DELIVERY_STANDARD;
+    int step = 1;
+    int hasSaved;
+    int shortId = findShortStock(items);
+
+    if (shortId != 0)
+    {
+        printf("Insufficient stock for Product ID %d.\n", shortId);
+        return 0;
+    }
+
+    order_process(items->quantities, items->count, items->unitPrices, &subtotal);
+    if (subtotal <= 0.0f)
+    {
+        printf("Invalid order total.\n");
+        return 0;
+    }
+
+    hasSaved = getCustomerDetails(username, saved.phone, sizeof(saved.phone),
+                                  saved.address, sizeof(saved.address));
+
+    for (;;)
+    {
+        if (step == 1)
+        {
+            if (!selectDelivery(subtotal, &deliveryMethod))
+                return 0;
+            fee = getDeliveryFee(deliveryMethod, subtotal);
+            step = 2;
+        }
+        else if (step == 2)
+        {
+            step = selectShipping(hasSaved, &saved, &chosen, subtotal, fee) ? 3 : 1;
+        }
+        else
+        {
+            if (!selectPayment(subtotal + fee))
+            {
+                step = 2;
+                continue;
+            }
+            if (!confirmOrder(username, &chosen, subtotal, fee, deliveryMethod))
+                return 0;
+            return submitOrder(username, items, &chosen, subtotal, fee, deliveryMethod);
+        }
+    }
+}
+
+/* Checkout everything in the customer's cart. */
+void checkout(const char *username)
+{
+    CheckoutItems items;
+
+    if (!validField(username))
+    {
+        printf("Invalid customer account.\n");
+        return;
+    }
+
+    if (!loadCartItems(username, &items))
+        return;
+
+    if (runCheckout(username, &items))
+        clearCart(username);
+}
+
+/* "Buy now": checkout a single product, cart is left untouched. */
+void startDirectCheckout(const char *username, int productId,
+                         int quantity, float unitPrice)
+{
+    CheckoutItems items;
+
+    if (!validField(username) || productId <= 0 || quantity <= 0 ||
+        !(unitPrice > 0.0f))
+    {
+        printf("Invalid checkout request.\n");
+        return;
+    }
+
+    items.count = 1;
+    items.productIds[0] = productId;
+    items.quantities[0] = quantity;
+    items.unitPrices[0] = unitPrice;
+
+    runCheckout(username, &items);
 }

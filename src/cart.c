@@ -2,23 +2,24 @@
 #include "orders.h"
 #include "models.h"
 #include "input.h"
+#include "ui.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
 
-#define PRODUCTS_FILE "data/products.txt"
+#define PRODUCTS_FILE "data/product.txt"
 #define CART_FILE "data/cart.txt"
 #define CART_TEMP_FILE "data/temp_cart.txt"
 #define CART_BACKUP_FILE "data/cart_backup.txt"
 
 /* Wait for a complete line without leaving a stray newline in stdin. */
-static void pauseForEnter(const char *message)
-{
-    char buffer[8];
-    (void)readLine(message, buffer, sizeof(buffer));
-}
+// static void pauseForEnter(const char *message)
+// {
+//     char buffer[8];
+//     (void)readLine(message, buffer, sizeof(buffer));
+// }
 
 /*
  * Replace cart.txt safely on platforms where rename() cannot overwrite an
@@ -101,14 +102,16 @@ void addToCart(const char *username, int productId, int quantity)
 
     if (username == NULL || username[0] == '\0' || productId <= 0 || quantity <= 0)
     {
-        printf("Invalid username, product ID, or quantity.\n");
+        showError("Invalid username, product ID, or quantity.");
         return;
     }
 
     fpProd = fopen(PRODUCTS_FILE, "r");
     if (fpProd == NULL)
     {
-        printf("Error: Cannot open %s\n", PRODUCTS_FILE);
+        char msg[120];
+        snprintf(msg, sizeof(msg), "Cannot open %s", PRODUCTS_FILE);
+        showError(msg);
         return;
     }
 
@@ -127,40 +130,40 @@ void addToCart(const char *username, int productId, int quantity)
         }
     }
 
-    if (ferror(fpProd))
-        cartError = 1;
-    if (fclose(fpProd) != 0)
-        cartError = 1;
+    if (ferror(fpProd)) cartError = 1;
+    if (fclose(fpProd) != 0) cartError = 1;
     if (cartError)
     {
-        printf("Error reading product inventory. Cart was not updated.\n");
+        showError("Error reading product inventory. Cart was not updated.");
         return;
     }
 
     if (!found)
     {
-        printf("Error: Product ID %d not found.\n", productId);
+        char msg[80];
+        snprintf(msg, sizeof(msg), "Product ID %d not found.", productId);
+        showError(msg);
         return;
     }
     if (product.stockQuantity <= 0)
     {
-        printf("Sorry! This product is out of stock.\n");
+        showError("Sorry! This product is out of stock.");
         return;
     }
     if (quantity > product.stockQuantity)
     {
-        printf("Invalid quantity. Available stock: %d\n", product.stockQuantity);
+        char msg[80];
+        snprintf(msg, sizeof(msg), "Invalid quantity. Available stock: %d", product.stockQuantity);
+        showWarning(msg);
         return;
     }
 
     fpCart = fopen(CART_FILE, "r");
-    /* If cart.txt does not exist yet, create a new cart through the temp file. */
     fpTemp = fopen(CART_TEMP_FILE, "w");
     if (fpTemp == NULL)
     {
-        if (fpCart != NULL)
-            fclose(fpCart);
-        printf("Error: Cannot create temporary cart file.\n");
+        if (fpCart != NULL) fclose(fpCart);
+        showError("Cannot create temporary cart file.");
         return;
     }
 
@@ -168,8 +171,7 @@ void addToCart(const char *username, int productId, int quantity)
     {
         while (fgets(line, sizeof(line), fpCart) != NULL)
         {
-            char savedUsername[100];
-            char savedProductName[100];
+            char savedUsername[100], savedProductName[100];
             int savedProductId, savedQuantity;
             float savedPrice, savedSubtotal;
 
@@ -177,8 +179,7 @@ void addToCart(const char *username, int productId, int quantity)
                        savedUsername, &savedProductId, savedProductName,
                        &savedQuantity, &savedPrice, &savedSubtotal) != 6)
             {
-                if (fputs(line, fpTemp) == EOF)
-                    cartError = 1;
+                if (fputs(line, fpTemp) == EOF) cartError = 1;
                 continue;
             }
 
@@ -194,18 +195,15 @@ void addToCart(const char *username, int productId, int quantity)
                 cartError = 1;
             }
         }
-
-        if (ferror(fpCart))
-            cartError = 1;
-        if (fclose(fpCart) != 0)
-            cartError = 1;
+        if (ferror(fpCart)) cartError = 1;
+        if (fclose(fpCart) != 0) cartError = 1;
     }
 
     if (cartError)
     {
         fclose(fpTemp);
         remove(CART_TEMP_FILE);
-        printf("Error reading or processing cart file. Cart was not updated.\n");
+        showError("Error reading or processing cart file. Cart was not updated.");
         return;
     }
 
@@ -213,7 +211,7 @@ void addToCart(const char *username, int productId, int quantity)
     {
         fclose(fpTemp);
         remove(CART_TEMP_FILE);
-        printf("Quantity is too large.\n");
+        showError("Quantity is too large.");
         return;
     }
 
@@ -223,8 +221,9 @@ void addToCart(const char *username, int productId, int quantity)
         {
             fclose(fpTemp);
             remove(CART_TEMP_FILE);
-            printf("Cannot add quantity. Available stock: %d\n", product.stockQuantity);
-            printf("Already in cart: %d\n", existingQuantity);
+            char msg[120];
+            snprintf(msg, sizeof(msg), "Cannot add. Stock: %d | Already in cart: %d", product.stockQuantity, existingQuantity);
+            showWarning(msg);
             return;
         }
 
@@ -233,13 +232,12 @@ void addToCart(const char *username, int productId, int quantity)
                     totalQuantity, product.price, totalQuantity * product.price) < 0)
             cartError = 1;
 
-        if (fclose(fpTemp) != 0)
-            cartError = 1;
+        if (fclose(fpTemp) != 0) cartError = 1;
 
         if (cartError)
         {
             remove(CART_TEMP_FILE);
-            printf("Error saving cart. Original cart was not changed.\n");
+            showError("Error saving cart. Original cart was not changed.");
             return;
         }
 
@@ -249,16 +247,21 @@ void addToCart(const char *username, int productId, int quantity)
             return;
         }
 
-        printf("\n%s added to cart successfully!\n", product.productName);
-        printf("Total quantity in cart: %d\n", totalQuantity);
-        printf("Subtotal: Rs. %.2f\n", totalQuantity * product.price);
+        // SUCCESS UI
+        printf("\n");
+        char successMsg[120];
+        snprintf(successMsg, sizeof(successMsg), "%s added to cart!", product.productName);
+        showSuccess(successMsg);
+        printf("\n");
+        printf("  " MAGENTA "╭──────────────────────────────────────────╮\n" RESET);
+        printf("  " MAGENTA "│" RESET "  Product : " CYAN "%-32.32s" RESET " " MAGENTA "│\n" RESET, product.productName);
+        printf("  " MAGENTA "│" RESET "  Quantity: " WHITE "%-4d" RESET " (Total in cart: " GREEN "%d" RESET ")      " MAGENTA "│\n" RESET, quantity, totalQuantity);
+        printf("  " MAGENTA "│" RESET "  Subtotal: " BOLD GREEN "Rs. %-8.2f" RESET "                      " MAGENTA "│\n" RESET, totalQuantity * product.price);
+        printf("  " MAGENTA "╰──────────────────────────────────────────╯\n" RESET);
     }
-}
-
-// =================================================================
+}// =================================================================
 // 2. VIEW CART FUNCTION
 // =================================================================
-
 void viewCart(const char *username)
 {
     char line[512];
@@ -266,7 +269,8 @@ void viewCart(const char *username)
 
     if (username == NULL || username[0] == '\0')
     {
-        printf("Error: Invalid username.\n");
+        showError("Invalid username.");
+        pressEnterToContinue();
         return;
     }
 
@@ -276,24 +280,21 @@ void viewCart(const char *username)
         int hasItems = 0;
         FILE *fpCart;
 
-#ifdef _WIN32
-        system("cls");
-#else
-        system("clear");
-#endif
+        clearScreen();
+        drawHeader("SHOPPING CART");
 
-        printf("\n===============================================================\n");
-        printf("                          SHOPPING CART                        \n");
-        printf("===============================================================\n");
-        printf("%-8s %-20s %-8s %-12s %-12s\n",
-               "ID", "Product", "Qty", "Price", "Subtotal");
-        printf("---------------------------------------------------------------\n");
+        // Table
+        printf("\n");
+        printTableHeader(5, "ID", "Product", "Qty", "Price", "Subtotal");
+        printTableDivider(5);
 
         fpCart = fopen(CART_FILE, "r");
         if (fpCart == NULL)
         {
-            printf("Your cart is empty or the cart file is unavailable.\n");
-            pauseForEnter("Press Enter to return...");
+            printTableDivider(5);
+            printf("\n");
+            showInfo("Your cart is empty or the cart file is unavailable.");
+            pressEnterToContinue();
             return;
         }
 
@@ -302,14 +303,19 @@ void viewCart(const char *username)
             char cname[100], pname[100];
             int pid, qty;
             float unit, subtotal;
+            char idStr[10], qtyStr[10], priceStr[20], subStr[20], nameShort[21];
 
             if (sscanf(line, "%99[^|]|%d|%99[^|]|%d|%f|%f",
                        cname, &pid, pname, &qty, &unit, &subtotal) == 6 &&
                 strcmp(cname, username) == 0)
             {
                 hasItems = 1;
-                printf("%-8d %-20.20s %-8d Rs. %-8.2f Rs. %-8.2f\n",
-                       pid, pname, qty, unit, subtotal);
+                snprintf(idStr, sizeof(idStr), "%d", pid);
+                snprintf(nameShort, sizeof(nameShort), "%.20s", pname);
+                snprintf(qtyStr, sizeof(qtyStr), "%d", qty);
+                snprintf(priceStr, sizeof(priceStr), "Rs.%.2f", unit);
+                snprintf(subStr, sizeof(subStr), "Rs.%.2f", subtotal);
+                printTableRow(5, idStr, nameShort, qtyStr, priceStr, subStr);
                 totalAmount += subtotal;
             }
         }
@@ -317,59 +323,69 @@ void viewCart(const char *username)
         if (ferror(fpCart))
         {
             fclose(fpCart);
-            printf("Error reading cart file.\n");
-            pauseForEnter("Press Enter to return...");
+            printf("\n");
+            showError("Error reading cart file.");
+            pressEnterToContinue();
             return;
         }
         fclose(fpCart);
 
         if (!hasItems)
         {
-            printf("Your cart is empty.\n");
-            pauseForEnter("Press Enter to return...");
+            printTableDivider(5);
+            printf("\n");
+            showInfo("Your cart is empty. Go add some products!");
+            pressEnterToContinue();
             return;
         }
 
-        printf("---------------------------------------------------------------\n");
-        printf("%-42s Rs. %.2f\n", "Total Amount:", totalAmount);
-        printf("===============================================================\n");
-        printf("\n1. Update Quantity\n2. Remove Item\n3. Clear Cart\n4. Checkout\n5. Return\n");
+        printTableDivider(5);
+        
+        // Total Card
+        printf("\n  " MAGENTA "╭──────────────────────────────────────────╮\n" RESET);
+        printf("  " MAGENTA "│" RESET "  Total Amount: " BOLD GREEN "Rs. %.2f" RESET "                      " MAGENTA "│\n" RESET, totalAmount);
+        printf("  " MAGENTA "╰──────────────────────────────────────────╯\n" RESET);
 
-        if (!readInteger("Enter choice: ", &choice, 1, 5))
+        // Actions Menu - Nordic style
+        printf("\n  " BOLD WHITE "CART ACTIONS\n" RESET);
+        printf("  " CYAN "1" RESET ". Update Quantity\n");
+        printf("  " CYAN "2" RESET ". Remove Item\n");
+        printf("  " YELLOW "3" RESET ". Clear Cart\n");
+        printf("  " GREEN "4" RESET ". Checkout " DIM "(proceed to pay)" RESET "\n");
+        printf("  " RED "5" RESET ". Return to Menu\n");
+
+        if (!readInteger("\n  " CYAN "❯" RESET " Enter choice: ", &choice, 1, 5))
             return;
 
         switch (choice)
         {
         case 1:
             updateCartQuantity(username);
-            pauseForEnter("Press Enter to continue...");
+            pressEnterToContinue();
             break;
         case 2:
         {
             int targetId;
-            if (readInteger("Enter Product ID to remove: ", &targetId, 1, INT_MAX))
+            if (readInteger("  " CYAN "❯" RESET " Enter Product ID to remove: ", &targetId, 1, INT_MAX))
                 removeFromCart(username, targetId);
-            pauseForEnter("Press Enter to continue...");
+            pressEnterToContinue();
             break;
         }
         case 3:
             clearCart(username);
-            pauseForEnter("Press Enter to continue...");
+            pressEnterToContinue();
             break;
         case 4:
             checkout(username);
-            pauseForEnter("Press Enter to continue...");
+            pressEnterToContinue();
             break;
         case 5:
             return;
         default:
-            /* readInteger constrains the choice to 1..5. */
             break;
         }
     }
-}
-
-// =================================================================
+}// =================================================================
 // 3. UPDATE QUANTITY FUNCTION
 // =================================================================
 

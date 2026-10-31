@@ -1,300 +1,228 @@
 # E-Commerce Management System
 
-## 1. Project Overview
+A Command Line Interface (CLI) e-commerce application written in C.
 
-The E-Commerce Management System is a Command Line Interface (CLI) application developed using the C programming language.
+Customers can register, log in, browse and search products, manage a shopping cart, place orders and view their order history. Administrators can manage products, users and orders, and view a simple dashboard.
 
-The system allows customers to register, log in, browse products, manage their shopping carts, place orders, and view their order history. Administrators can manage products, customers, and orders through a dedicated admin panel.
+This is a first-year university C programming group project.
 
-This project is developed as a first-year university C programming group project.
+## Table of Contents
 
-## 2. Project Objectives
+1. [Features](#1-features)
+2. [Technologies Used](#2-technologies-used)
+3. [Project Structure](#3-project-structure)
+4. [Building and Running](#4-building-and-running)
+5. [How to Use](#5-how-to-use)
+6. [Data Storage](#6-data-storage)
+7. [C Concepts Demonstrated](#7-c-concepts-demonstrated)
+8. [Limitations](#8-limitations)
+9. [Team Members](#9-team-members)
 
-* Develop a functional CLI-based e-commerce system using C.
-* Demonstrate fundamental C programming concepts.
-* Implement file handling for persistent data storage.
-* Apply structures, arrays, functions, loops, and conditional statements.
-* Practice modular programming and collaborative development using GitHub.
-* Implement basic customer and administrator operations.
+## 1. Features
 
-## 3. Technologies Used
+### Guest
 
-* **Programming Language:** C
-* **Compiler:** GCC
-* **Interface:** Command Line Interface (CLI)
-* **Data Storage:** Text or binary files
-* **Version Control:** Git and GitHub
-* **Development Environment:** Visual Studio Code
-
-## 4. User Roles
+* View the product list without logging in.
+* Read the in-app instructions and About Us page.
 
 ### Customer
 
-Customers will be able to:
-
-* Register a new account.
-* Log in to an existing account.
-* View available products.
+* Register a new account and log in.
+* Browse products page by page and add them to the cart.
 * Search for products.
-* Add products to a shopping cart.
-* Remove items from the cart.
-* Proceed to checkout.
+* View the cart, update item quantities, remove items or clear the cart.
+* Checkout with a choice of delivery method:
+  * Standard shipping: Rs. 100.00 (5-8 days), free when the cart total is Rs. 500.00 or more.
+  * Express shipping: Rs. 250.00 (2-4 days).
+* Pay with Cash on Delivery, after confirming the order summary.
+* Receive an invoice, saved as a text file in `data/invoices/`.
 * View previous orders.
-* View their profile.
-* Log out.
+* Stock is checked before an order is placed and reduced after purchase.
 
 ### Administrator
 
-Administrators will be able to:
+* Add, update and delete products.
+* User management: view all users, delete a user, promote a user to admin or demote an admin to a normal user.
+* Update order status (`PENDING`, `PAID`, `SHIPPED`).
+* Dashboard with a system overview (product, user and order counts, total stock and stock value), product statistics and an inventory report (low stock and out of stock items).
 
-* Log in using administrator credentials.
-* Add, view, search, update, and delete products.
-* View and search customer records.
-* View customer details and manage customer records.
-* View and search orders.
-* Update order statuses.
-* Cancel orders.
-* Generate basic system reports.
+## 2. Technologies Used
 
-## 5. Project Structure
+| Item | Details |
+| --- | --- |
+| Language | C |
+| Compiler | GCC (MinGW-w64 for Windows builds) |
+| Interface | Command Line Interface with ANSI colours and Unicode box characters |
+| Data storage | Plain text files, `|` delimited |
+| Version control | Git and GitHub |
+| Editor | Visual Studio Code |
+
+## 3. Project Structure
 
 ```text
 E-Commerce-Management-System/
 │
 ├── src/
-│   ├── main.c
-│   ├── users.c
-│   ├── products.c
-│   ├── cart.c
-│   ├── orders.c
-│   └── admin.c
+│   ├── main.c        Main menu, customer login/registration, admin panel loop
+│   ├── ui.c          Colours, headers, menus and message helpers
+│   ├── input.c       Safe input reading and validation
+│   ├── users.c       Login, registration, user roles
+│   ├── products.c    Product add, update, delete, browse and search
+│   ├── cart.c        Cart operations
+│   ├── orders.c      Checkout, invoices, order history, order status
+│   └── admin.c       User management and dashboard
 │
-├── include/
-│   ├── models.h
-│   ├── users.h
-│   ├── products.h
-│   ├── cart.h
-│   ├── orders.h
-│   └── admin.h
+├── include/          Header files for each module (models.h holds the data structures)
 │
 ├── data/
-│   ├── users.dat
-│   ├── products.dat
-│   ├── orders.dat
-│   └── cart.dat
+│   ├── users.txt     User accounts
+│   ├── product.txt   Products and stock
+│   ├── orders.txt    Orders
+│   ├── cart.txt      Cart items
+│   └── invoices/     One invoice file per order (created automatically)
 │
-├── run.bat
+├── assets/
+│   └── icon.ico      Icon used for the Windows executable
+│
+├── icon.rc           Resource file that embeds the icon in the .exe
+├── ecommerce.exe     Windows executable
 ├── README.md
 └── .gitignore
 ```
 
-### Directory Description
+## 4. Building and Running
 
-* `src/` — Contains the C source files.
-* `include/` — Contains header files, structures, and function declarations.
-* `data/` — Stores application data using files.
-* `run.bat` — Compiles and runs the application on Windows when GCC is installed.
-* `README.md` — Documents the project.
+**Always run the program from the project root folder.** The program opens its data files using relative paths such as `data/users.txt`, so it cannot find them if it is started from another folder.
 
-## 6. Data Storage
+### Windows (GCC / MinGW-w64 installed)
 
-The application uses file handling in C to store information between program executions.
-
-| File           | Purpose                                                      |
-| -------------- | ------------------------------------------------------------ |
-| `users.dat`    | Stores customer account information.                         |
-| `products.dat` | Stores product information and stock quantities.             |
-| `orders.dat`   | Stores order records and order statuses.                     |
-| `cart.dat`     | Stores cart information if persistent carts are implemented. |
-
-No database management system is used.
-
-The implementation may use functions such as:
-
-* `fopen()`
-* `fclose()`
-* `fprintf()`
-* `fscanf()`
-* `fread()`
-* `fwrite()`
-* `fseek()`
-* `remove()`
-* `rename()`
-
-The selected file format must be used consistently throughout the application.
-
-## 7. Main Menu
-
-The application starts with the following menu:
-
-```text
-========================================
-      E-COMMERCE MANAGEMENT SYSTEM
-========================================
-
-1. Customer Login
-2. Customer Registration
-3. Admin Login
-4. Exit
-
-Enter your choice:
-```
-
-Customers and administrators are directed to their respective menus after successful authentication.
-
-## 8. Installation and Execution
-
-### Requirements
-
-Install the following software:
-
-* GCC C compiler
-* Visual Studio Code or another text editor
-* Windows operating system for the supplied `run.bat` script
-
-### Run on Windows
-
-1. Install GCC and ensure it is available through your system's PATH.
-2. Open the project folder.
-3. Ensure all required source files are present.
-4. Double-click `run.bat` or execute it from the terminal.
+From the project root:
 
 ```powershell
-.\run.bat
-```
-
-The program will compile and run if compilation succeeds.
-
-### Compile Manually
-
-From the project root directory, run:
-
-```bash
-gcc -Iinclude src/main.c src/users.c src/products.c src/cart.c src/orders.c src/admin.c -o ecommerce.exe
-```
-
-Run on Windows:
-
-```powershell
+gcc -Wall -Iinclude src/main.c src/users.c src/products.c src/cart.c src/orders.c src/admin.c src/input.c src/ui.c -o ecommerce.exe
 .\ecommerce.exe
 ```
 
-On Linux, compile the same source files using:
+To embed the icon, build the resource file first and add `icon.o` to the command:
 
-```bash
-gcc -Iinclude src/main.c src/users.c src/products.c src/cart.c src/orders.c src/admin.c -o ecommerce
+```powershell
+windres icon.rc -O coff -o icon.o
+gcc -Wall -Iinclude src/main.c src/users.c src/products.c src/cart.c src/orders.c src/admin.c src/input.c src/ui.c icon.o -o ecommerce.exe
 ```
 
-Run on Linux:
+Use Windows Terminal (or a recent Windows 10/11 console) for correct colours. The program sets the console to UTF-8 automatically.
+
+### Windows executable built from Linux or WSL
 
 ```bash
+sudo apt install mingw-w64
+x86_64-w64-mingw32-windres icon.rc -O coff -o icon.o
+x86_64-w64-mingw32-gcc -static -Wall -Iinclude src/main.c src/users.c src/products.c src/cart.c src/orders.c src/admin.c src/input.c src/ui.c icon.o -o ecommerce.exe
+```
+
+The `-static` option makes the executable run on other Windows PCs without extra DLL files.
+
+### Linux
+
+```bash
+gcc -Wall -Iinclude src/main.c src/users.c src/products.c src/cart.c src/orders.c src/admin.c src/input.c src/ui.c -o ecommerce
 ./ecommerce
 ```
 
-**Note:** These commands assume that the source files and their required function implementations exist. The project must be integrated before the complete application can compile successfully.
+Every `.c` file in `src/` must be included in the build command.
 
-## 9. C Programming Concepts
+## 5. How to Use
 
-The project demonstrates the following concepts:
+The main menu:
 
-* Variables and data types
-* Conditional statements (`if`, `else`, `switch`)
-* Loops (`for`, `while`, `do-while`)
-* Functions and modular programming
+```text
+1. Customer Login
+2. Customer Registration
+3. View Products (Guest)
+4. Instructions
+5. About Us
+99. Admin Login
+0. Exit
+```
+
+### Customer flow
+
+1. Choose `2` to register, then `1` to log in.
+2. Use **View Products & Buy** or **Search Product** to find items and add them to the cart.
+3. Open **My Cart** to review items, change quantities or remove items, then check out.
+4. Choose the delivery method and payment method, and confirm the order.
+5. The invoice is saved as `data/invoices/invoice_<order id>.txt`.
+6. Use **My Orders** to see your order history.
+
+### Administrator flow
+
+1. Choose `99` at the main menu and log in with an account whose role is admin.
+2. Use the admin panel to manage products, users and orders, or open the dashboard.
+
+Default administrator account: username `admin`, password `1234`. Change this if the data files are replaced.
+
+## 6. Data Storage
+
+All data is stored in text files inside `data/`. One record is stored per line, with fields separated by `|`. No database is used.
+
+| File | Purpose |
+| --- | --- |
+| `users.txt` | User accounts |
+| `product.txt` | Products and stock quantities |
+| `orders.txt` | Order records and statuses |
+| `cart.txt` | Items currently in customers' carts |
+| `invoices/` | One generated invoice per order |
+
+`users.txt` format:
+
+```text
+id|username|password|email|phone|address|role|isActive
+```
+
+`role` is `0` for a customer and `1` for an administrator.
+
+`product.txt` format:
+
+```text
+id|name|category|price|stock|description
+```
+
+Files are updated by writing a temporary file and then replacing the original, so records are not lost if a write fails part-way.
+
+## 7. C Concepts Demonstrated
+
+* Variables, data types and `enum`
+* Conditional statements and loops
+* Functions and modular programming with header files
 * Arrays and strings
 * Structures (`struct`)
 * Pointers
-* File handling
-* Input validation
-* Error handling
-* Basic searching and updating algorithms
+* File handling (`fopen`, `fgets`, `fprintf`, `remove`, `rename`)
+* Input validation and error handling
+* Searching, updating and deleting records
+* Variadic functions for table printing
 
-## 10. Development Workflow
-
-The project is developed collaboratively using GitHub.
-
-Recommended workflow:
-
-1. Clone the project repository.
-2. Create a separate branch for your assigned module.
-3. Implement and test your functions.
-4. Commit your changes with a meaningful message.
-5. Push your branch to GitHub.
-6. Create a pull request.
-7. Review and integrate changes into the main branch.
-8. Compile and test the integrated application.
-
-Team members should agree on shared structures, function names, parameter types, and file formats before integrating their modules.
-
-## 11. Testing
-
-The application should be tested for:
-
-* Successful customer registration and login.
-* Duplicate usernames.
-* Invalid credentials.
-* Invalid menu selections.
-* Product searching and updating.
-* Insufficient product stock.
-* Shopping cart calculations.
-* Order placement and stock reduction.
-* Order status updates.
-* File opening and writing errors.
-* Data persistence after restarting the application.
-
-## 12. Security and Data Integrity
-
-* Validate user input before processing it.
-* Prevent duplicate usernames.
-* Check stock availability before placing an order.
-* Verify that prices and quantities are valid.
-* Check file operations for errors.
-* Restrict administrator operations to authenticated administrators.
-* Avoid storing real customer information in test files.
-* Treat plain-text password storage as a prototype limitation; real applications require appropriate password hashing.
-
-## 13. Project Scope and Limitations
+## 8. Limitations
 
 This project is an educational prototype.
 
-It does not include:
+* Passwords are stored as plain text. A real application must hash passwords.
+* Payment is simulated. Only Cash on Delivery is available.
+* There is no graphical or web interface, and no database.
+* Orders cannot be cancelled. The statuses are `PENDING`, `PAID` and `SHIPPED`.
+* Data files are plain text, so they can be edited by hand and are not protected against concurrent use.
 
-* A graphical user interface.
-* A web interface.
-* A database management system.
-* Real online payment processing.
-* External APIs.
-* Online shipping integration.
+## 9. Team Members
 
-Orders and payments, if included, are simulated within the CLI application.
+| Student ID | Name | Responsibility |
+| --- | --- | --- |
+| TG/IT/2025/2522 | H.G.L.R. Prasanna (Leader) | Main function and UI |
+| TG/IT/2025/2484 | A.B. Manamperi | Cart |
+| TG/IT/2025/2504 | A.R.S. Aluthwaththa | Admin part |
+| TG/IT/2025/2476 | G. Salitha Devin Perera | User management |
+| TG/IT/2025/2481 | H.G.S. Dilshan | Product section |
+| TG/IT/2025/2477 | N.H.S.T. Nimsara | Order section |
 
-## 14. Future Improvements
+## License
 
-Possible improvements include:
-
-* Better input validation.
-* Improved file error handling.
-* More detailed sales reports.
-* Product category filtering.
-* Persistent shopping carts.
-* Improved order tracking.
-* Stronger authentication practices.
-
-## 15. Contributors
-
-This project is developed by a six-member university team.
-
-| Member   | Responsibility |
-| -------- | -------------- |
-| Member 1 | To be assigned |
-| Member 2 | To be assigned |
-| Member 3 | To be assigned |
-| Member 4 | To be assigned |
-| Member 5 | To be assigned |
-| Member 6 | To be assigned |
-
-Update the responsibilities according to the team's final task allocation.
-
-## 16. License
-
-This project is developed for educational purposes as part of a university programming course.
+Developed for educational purposes as part of a university programming course.

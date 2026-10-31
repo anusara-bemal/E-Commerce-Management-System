@@ -3,7 +3,7 @@
 #include <string.h>
 #include <limits.h>
 #include "input.h"
-
+#include "ui.h"
 #include "models.h"
 #include "users.h"
 
@@ -14,7 +14,8 @@ static int getNextUserId(void)
 
     if (fp == NULL)
     {
-        printf("Cannot open file: %s\n", USERS_FILE);
+        
+        printf(RED "Cannot open file: %s\n" RESET, USERS_FILE);
         return -1;
     }
 
@@ -34,7 +35,7 @@ static int getNextUserId(void)
 
     if (ferror(fp))
     {
-        printf("Error reading users file.\n");
+        printf(RED "Error reading users file.\n" RESET);
         fclose(fp);
         return -1;
     }
@@ -43,7 +44,7 @@ static int getNextUserId(void)
 
     if (lastId == INT_MAX)
     {
-        printf("Cannot generate another user ID.\n");
+        printf(RED "Cannot generate another user ID.\n" RESET);
         return -1;
     }
 
@@ -57,35 +58,34 @@ int login(char logginuser[])
     char intuser[MAX_USERNAME];
     char intpass[MAX_PASSWORD];
 
-    printf("==================================================\n");
-    printf("LOGIN\n");
-    printf("==================================================\n");
+    clearScreen();
+    drawHeader("CUSTOMER LOGIN");
+    printf("\n  " DIM "Enter your credentials to continue" RESET "\n\n");
 
-    printf("Enter Username: ");
-
+    printf("  " CYAN "❯" RESET " Enter Username: ");
     if (fgets(intuser, sizeof(intuser), stdin) == NULL)
         return 0;
-
     intuser[strcspn(intuser, "\r\n")] = '\0';
 
-    printf("Enter Password: ");
-
+    printf("  " CYAN "❯" RESET " Enter Password: ");
     if (fgets(intpass, sizeof(intpass), stdin) == NULL)
         return 0;
-
     intpass[strcspn(intpass, "\r\n")] = '\0';
 
     if (intuser[0] == '\0' || intpass[0] == '\0')
     {
-        printf("Username and password cannot be empty.\n");
+        showError("Username and password cannot be empty.");
+        pressEnterToContinue();
         return 0;
     }
 
     FILE *fp = fopen(USERS_FILE, "r");
-
     if (fp == NULL)
     {
-        printf("Cannot open file: %s\n", USERS_FILE);
+        char msg[120];
+        snprintf(msg, sizeof(msg), "Cannot open file: %s", USERS_FILE);
+        showError(msg);
+        pressEnterToContinue();
         return 0;
     }
 
@@ -95,8 +95,11 @@ int login(char logginuser[])
     while (fgets(line, sizeof(line), fp) != NULL)
     {
         line[strcspn(line, "\r\n")] = '\0';
+        
+        char copy[500];
+        strcpy(copy, line);
 
-        char *id = strtok(line, "|");
+        char *id = strtok(copy, "|");
         char *username = strtok(NULL, "|");
         char *password = strtok(NULL, "|");
         char *email = strtok(NULL, "|");
@@ -115,12 +118,6 @@ int login(char logginuser[])
         if (strcmp(username, intuser) == 0 &&
             strcmp(password, intpass) == 0)
         {
-            // if (strcmp(active, "1") != 0)
-            // {
-            //     printf("This account is inactive.\n");
-            //     break;
-            // }
-
             if (strlen(username) >= MAX_USERNAME)
                 break;
 
@@ -133,7 +130,8 @@ int login(char logginuser[])
     if (ferror(fp))
     {
         fclose(fp);
-        printf("Error reading users file.\n");
+        showError("Error reading users file.");
+        pressEnterToContinue();
         return 0;
     }
 
@@ -141,27 +139,28 @@ int login(char logginuser[])
 
     if (found)
     {
-        printf("\nLogin successful!\n");
+        printf("\n");
+        showSuccess("Login successful! Welcome back.");
         return 1;
     }
 
-    printf("\nInvalid username or password.\n");
+    showError("Invalid username or password.");
+    pressEnterToContinue();
     return 0;
 }
-
 
 /* Validate username */
 int validuser(char username[])
 {
     if (strlen(username) < 3)
     {
-        printf("Username must have at least 3 characters.\n");
+        printf(YELLOW "Username must have at least 3 characters.\n" RESET);
         return 0;
     }
 
     if (strchr(username, '|') != NULL)
     {
-        printf("Username cannot contain '|'.\n");
+        printf(YELLOW "Username cannot contain '|'.\n" RESET);
         return 0;
     }
 
@@ -186,7 +185,7 @@ int validuser(char username[])
             strcmp(existingUsername, username) == 0)
         {
             fclose(fp);
-            printf("Username already exists!\n");
+            printf(RED "Username already exists!\n" RESET);
             return 0;
         }
     }
@@ -194,7 +193,7 @@ int validuser(char username[])
     if (ferror(fp))
     {
         fclose(fp);
-        printf("Error reading users file.\n");
+        printf(RED "Error reading users file.\n" RESET);
         return 0;
     }
 
@@ -202,20 +201,20 @@ int validuser(char username[])
     return 1;
 }
 
-/* Register customer */
+/* Register customer - Polished Nordic UI */
 void registerCustomer(void)
 {
     User d = {0};
 
-    printf("==================================================\n");
-    printf("CUSTOMER REGISTRATION\n");
-    printf("==================================================\n");
+    clearScreen();
+    drawHeader("CUSTOMER REGISTRATION");
+    printf("\n  " DIM "Create your account - All fields required" RESET "\n\n");
 
     /* Username validation */
     while (1)
     {
         if (!readNonEmptyString(
-                "Username: ", d.username, sizeof(d.username)))
+                "  " CYAN "❯" RESET " Username: ", d.username, sizeof(d.username)))
         {
             return;
         }
@@ -225,14 +224,14 @@ void registerCustomer(void)
             break;
         }
 
-        printf("Please enter a different valid username.\n");
+        showWarning("Please enter a different valid username.");
     }
 
     /* Password validation */
     while (1)
     {
         if (!readNonEmptyString(
-                "Password: ", d.password, sizeof(d.password)))
+                "  " CYAN "❯" RESET " Password: ", d.password, sizeof(d.password)))
         {
             return;
         }
@@ -242,14 +241,14 @@ void registerCustomer(void)
             break;
         }
 
-        printf("Password cannot contain '|'. Please try again.\n");
+        showWarning("Password cannot contain '|'. Please try again.");
     }
 
     /* Email validation */
     while (1)
     {
         if (!readNonEmptyString(
-                "Email: ", d.email, sizeof(d.email)))
+                "  " CYAN "❯" RESET " Email: ", d.email, sizeof(d.email)))
         {
             return;
         }
@@ -264,14 +263,14 @@ void registerCustomer(void)
             break;
         }
 
-        printf("Invalid email address. Please try again.\n");
+        showWarning("Invalid email address. Please try again.");
     }
 
     /* Phone number validation */
     while (1)
     {
         if (!readNonEmptyString(
-                "Phone Number (10 digits): ",
+                "  " CYAN "❯" RESET " Phone Number (10 digits): ",
                 d.tpNumber, sizeof(d.tpNumber)))
         {
             return;
@@ -293,14 +292,14 @@ void registerCustomer(void)
             break;
         }
 
-        printf("Phone number must contain exactly 10 digits.\n");
+        showWarning("Phone number must contain exactly 10 digits.");
     }
 
     /* Address validation */
     while (1)
     {
         if (!readNonEmptyString(
-                "Address: ", d.address, sizeof(d.address)))
+                "  " CYAN "❯" RESET " Address: ", d.address, sizeof(d.address)))
         {
             return;
         }
@@ -310,7 +309,7 @@ void registerCustomer(void)
             break;
         }
 
-        printf("Address cannot contain '|'. Please try again.\n");
+        showWarning("Address cannot contain '|'. Please try again.");
     }
 
     /* Generate user ID */
@@ -318,7 +317,8 @@ void registerCustomer(void)
 
     if (d.id == -1)
     {
-        printf("Registration failed. Cannot generate user ID.\n");
+        showError("Registration failed. Cannot generate user ID.");
+        pressEnterToContinue();
         return;
     }
 
@@ -330,7 +330,10 @@ void registerCustomer(void)
 
     if (fp == NULL)
     {
-        printf("Cannot open file: %s\n", USERS_FILE);
+        char msg[120];
+        snprintf(msg, sizeof(msg), "Cannot open file: %s", USERS_FILE);
+        showError(msg);
+        pressEnterToContinue();
         return;
     }
 
@@ -349,38 +352,45 @@ void registerCustomer(void)
     if (result < 0)
     {
         fclose(fp);
-        printf("Error saving registration data.\n");
+        showError("Error saving registration data.");
+        pressEnterToContinue();
         return;
     }
 
     if (fclose(fp) != 0)
     {
-        printf("Error closing users file.\n");
+        showError("Error closing users file.");
+        pressEnterToContinue();
         return;
     }
 
-    printf("\nCustomer registered successfully! ID = %d\n", d.id);
+    drawFooter();
+    char successMsg[80];
+    snprintf(successMsg, sizeof(successMsg), "Customer registered successfully! ID = %d", d.id);
+    showSuccess(successMsg);
+    pressEnterToContinue();
 }
-
 /* Update profile */
 void updateprofile(char logginuser[])
 {
     logginuser[strcspn(logginuser, "\r\n")] = '\0';
 
     FILE *fp = fopen(USERS_FILE, "r");
-
     if (fp == NULL)
     {
-        printf("Cannot open file: %s\n", USERS_FILE);
+        char msg[120];
+        snprintf(msg, sizeof(msg), "Cannot open file: %s", USERS_FILE);
+        showError(msg);
+        pressEnterToContinue();
         return;
     }
 
     FILE *temp = fopen("temp.txt", "w");
-
     if (temp == NULL)
     {
         fclose(fp);
-        printf("Cannot create temporary file.\n");
+        showError("Cannot create temporary file.");
+        pressEnterToContinue();
         return;
     }
 
@@ -413,7 +423,6 @@ void updateprofile(char logginuser[])
                 error = 1;
                 break;
             }
-
             continue;
         }
 
@@ -424,62 +433,56 @@ void updateprofile(char logginuser[])
                 error = 1;
                 break;
             }
-
             continue;
         }
 
         User d = {0};
-
         snprintf(d.username, sizeof(d.username), "%s", username);
         snprintf(d.password, sizeof(d.password), "%s", password);
         snprintf(d.email, sizeof(d.email), "%s", email);
         snprintf(d.tpNumber, sizeof(d.tpNumber), "%s", phone);
         snprintf(d.address, sizeof(d.address), "%s", address);
 
-        printf("\n========== UPDATE PROFILE ==========\n");
-        printf("Current Email: %s\n", d.email);
-        printf("Current Phone: %s\n", d.tpNumber);
-        printf("Current Address: %s\n", d.address);
+        clearScreen();
+        drawHeader("UPDATE PROFILE");
+        printf("\n  " DIM "Current profile for " RESET BOLD WHITE "%s\n\n" RESET, logginuser);
+        printf("  " MAGENTA "╭──────────────────────────────────────────╮\n" RESET);
+        printf("  " MAGENTA "│" RESET " Email   : " CYAN "%-28.28s " RESET MAGENTA "│\n" RESET, d.email);
+        printf("  " MAGENTA "│" RESET " Phone   : " CYAN "%-28.28s " RESET MAGENTA "│\n" RESET, d.tpNumber);
+        printf("  " MAGENTA "│" RESET " Address : " CYAN "%-28.28s " RESET MAGENTA "│\n" RESET, d.address);
+        printf("  " MAGENTA "╰──────────────────────────────────────────╯\n\n" RESET);
+
+        printf("  " BOLD WHITE "Enter New Details:\n\n" RESET);
 
         /* Email validation */
         while (1)
         {
             if (!readNonEmptyString(
-                    "New Email: ", d.email, sizeof(d.email)))
+                    "  " CYAN "❯" RESET " New Email: ", d.email, sizeof(d.email)))
             {
                 error = 1;
                 break;
             }
-
             char *at = strchr(d.email, '@');
-
-            if (at != NULL &&
-                at != d.email &&
-                strchr(at + 1, '.') != NULL &&
-                strchr(d.email, '|') == NULL)
+            if (at != NULL && at != d.email && strchr(at + 1, '.') != NULL && strchr(d.email, '|') == NULL)
             {
                 break;
             }
-
-            printf("Invalid email address. Please try again.\n");
+            showWarning("Invalid email address. Please try again.");
         }
-
-        if (error)
-            break;
+        if (error) break;
 
         /* Phone validation */
         while (1)
         {
             if (!readNonEmptyString(
-                    "New Phone Number (10 digits): ",
+                    "  " CYAN "❯" RESET " New Phone Number (10 digits): ",
                     d.tpNumber, sizeof(d.tpNumber)))
             {
                 error = 1;
                 break;
             }
-
             int validPhone = (strlen(d.tpNumber) == 10);
-
             for (size_t i = 0; d.tpNumber[i] != '\0'; i++)
             {
                 if (d.tpNumber[i] < '0' || d.tpNumber[i] > '9')
@@ -488,94 +491,77 @@ void updateprofile(char logginuser[])
                     break;
                 }
             }
-
-            if (validPhone)
-                break;
-
-            printf("Phone number must contain exactly 10 digits.\n");
+            if (validPhone) break;
+            showWarning("Phone number must contain exactly 10 digits.");
         }
-
-        if (error)
-            break;
+        if (error) break;
 
         /* Address validation */
         while (1)
         {
             if (!readNonEmptyString(
-                    "New Address: ", d.address, sizeof(d.address)))
+                    "  " CYAN "❯" RESET " New Address: ", d.address, sizeof(d.address)))
             {
                 error = 1;
                 break;
             }
-
-            if (strchr(d.address, '|') == NULL)
-                break;
-
-            printf("Address cannot contain '|'. Please try again.\n");
+            if (strchr(d.address, '|') == NULL) break;
+            showWarning("Address cannot contain '|'. Please try again.");
         }
-
-        if (error)
-            break;
+        if (error) break;
 
         if (fprintf(temp, "%s|%s|%s|%s|%s|%s|%s|%s\n",
-                    id,
-                    d.username,
-                    d.password,
-                    d.email,
-                    d.tpNumber,
-                    d.address,
-                    role,
-                    active) < 0)
+                    id, d.username, d.password, d.email, d.tpNumber, d.address, role, active) < 0)
         {
             error = 1;
             break;
         }
-
         found = 1;
     }
 
-    if (ferror(fp))
-        error = 1;
-
-    if (fclose(fp) != 0)
-        error = 1;
-
-    if (fclose(temp) != 0)
-        error = 1;
+    if (ferror(fp)) error = 1;
+    if (fclose(fp) != 0) error = 1;
+    if (fclose(temp) != 0) error = 1;
 
     if (error)
     {
         remove("temp.txt");
-        printf("\nProfile update failed. Original data was preserved.\n");
+        showError("Profile update failed. Original data was preserved.");
+        pressEnterToContinue();
         return;
     }
 
     if (!found)
     {
         remove("temp.txt");
-        printf("User not found: %s\n", logginuser);
+        char msg[80];
+        snprintf(msg, sizeof(msg), "User not found: %s", logginuser);
+        showError(msg);
+        pressEnterToContinue();
         return;
     }
 
     if (rename("temp.txt", USERS_FILE) != 0)
     {
-        printf("Could not replace the users file.\n");
-        printf("Temporary file retained: temp.txt\n");
+        showError("Could not replace the users file. Temp file retained: temp.txt");
+        pressEnterToContinue();
         return;
     }
 
-    printf("\nProfile updated successfully!\n");
+    showSuccess("Profile updated successfully!");
+    pressEnterToContinue();
 }
-
-
 /* Logout */
 void logout(char logginuser[])
 {
     logginuser[0] = '\0';
-    printf("Logout successful!\n");
+    clearScreen();
+    drawHeader("LOGOUT");
+    printf("\n");
+    showSuccess("Logout successful! See you again.");
+    printf("\n  " DIM "Returning to main menu...\n" RESET);
+    pressEnterToContinue();
 }
-
-
 int getUserRole(char username[])
 {
     FILE *fp = fopen(USERS_FILE, "r");

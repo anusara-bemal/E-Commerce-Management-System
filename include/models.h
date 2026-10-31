@@ -18,7 +18,7 @@
 #define DELIMITER_CHAR '|'
 
 #define USERS_FILE "data/users.txt"
-#define PRODUCTS_FILE "data/products.txt"
+#define PRODUCTS_FILE "data/product.txt"
 #define ORDERS_FILE "data/orders.txt"
 #define CART_FILE "data/cart.txt" 
 

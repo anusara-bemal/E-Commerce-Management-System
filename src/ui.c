@@ -1,182 +1,178 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
+#include <stdarg.h>
+#include "../include/ui.h"
 
-#include "ui.h"
-
-/* Clear terminal screen */
-void clearScreen(void)
-{
+void clearScreen(void){
 #ifdef _WIN32
-system("cls");
+    system("cls");
 #else
-system("clear");
+    system("clear");
 #endif
 }
 
-/* Display application branding */
-void showSplash(void)
-{
-clearScreen();
-
-
-printf("\n");
-printf(CYAN BOLD);
-printf("  ============================================================\n");
-printf("   _   _  ___  ____  ____ ___ ____\n");
-printf("  | \\ | |/ _ \\|  _ \\|  _ \\_ _/ ___|\n");
-printf("  |  \\| | | | | |_) | | | | |\\___ \\\n");
-printf("  | |\\  | |_| |  _ <| |_| | | ___) |\n");
-printf("  |_| \\_|\\___/|_| \\_\\____/___|____/\n");
-printf("\n");
-printf("                 E-COMMERCE MANAGEMENT SYSTEM\n");
-printf(RESET);
-
-printf(CYAN);
-printf("  ============================================================\n");
-printf(RESET);
-
-printf("\n");
-printf(DIM "  Simple. Reliable. Efficient.\n" RESET);
-printf("\n");
-
-
+void showSplash(void){
+    clearScreen();
+    printf("\n");
+    printf(MAGENTA BOLD);
+    printf("  ╭───────────────────────────────────────────────────╮\n");
+    printf("  │   ███████╗      ███████╗██╗  ██╗ ██████╗ ██████╗  │\n");
+    printf("  │   ██╔════╝      ██╔════╝██║  ██║██╔═══██╗██╔══██╗ │\n");
+    printf("  │   ███████╗      ███████╗███████║██║   ██║██████╔╝ │\n");
+    printf("  │   ╚════██║      ╚════██║██╔══██║██║   ██║██╔═══╝  │\n");
+    printf("  │   ███████║      ███████║██║  ██║╚██████╔╝██║      │\n");
+    printf("  ╰───────────────────────────────────────────────────╯\n" RESET);
+    printf(CYAN "  ╭─ System ────────────────────────────────────╮\n");
+         printf("  │  PROJECT E-Commerce Management System v1.0  │\n");
+         printf("  ╰─────────────────────────────────────────────╯\n" RESET);
+    printf("\n   ● ● ● ● ● ● ● ●\n\n");
 }
 
-/* Draw a consistent page header */
-void drawHeader(const char *title)
-{
-printf("\n");
-printf(CYAN);
-printf("  +──────────────────────────────────────────────────────────+\n");
-printf("  |" RESET BOLD WHITE "  NORDIC E-COMMERCE                                       " RESET CYAN "|\n");
-printf("  +__________________________________________________________+\n");
-printf("  |" RESET BOLD "  %-56.56s" RESET CYAN "|\n", title);
-printf("  +──────────────────────────────────────────────────────────+\n");
-printf(RESET);
+void drawHeader(const char* title){
+    printf("\n");
+    printf("%s%s", MAGENTA, R_TL);
+    for(int i=0;i<52;i++) printf("%s", R_H);
+    printf("%s\n", R_TR);
+    printf("%s%s  %s%-48s  %s%s\n", MAGENTA, R_V, BOLD WHITE, title, RESET MAGENTA, R_V);
+    printf("%s", R_BL);
+    for(int i=0;i<52;i++) printf("%s", R_H);
+    printf("%s\n" RESET, R_BR);
 }
 
-/* Draw one menu option */
-void drawMenuItem(int num, const char *title, const char *desc)
-{
-printf(CYAN "  | " RESET);
-
-
-if (num == 99)
-    printf(YELLOW BOLD "%-3d" RESET, num);
-else
-    printf(GREEN BOLD "%-3d" RESET, num);
-
-printf(" " WHITE "%-25.25s" RESET, title);
-printf(DIM "%-18.18s" RESET, desc);
-
-printf(CYAN " |\n" RESET);
-
-
+void drawFooter(void){
+    printf("%s%s", MAGENTA, R_BL);
+    for(int i=0;i<52;i++) printf("%s", R_H);
+    printf("%s\n" RESET, R_BR);
 }
 
-/* Draw menu footer */
-void drawFooter(void)
-{
-printf(CYAN "  +──────────────────────────────────────────────────────────+\n" RESET);
-printf("\n");
-printf(BOLD CYAN "  >> " RESET "Enter your choice: ");
-fflush(stdout);
+void drawMenuItem(int num, const char* text, const char* desc){
+    printf("%s%s  " RESET GREEN BOLD "%d. " RESET WHITE "%-20s " RESET DIM "%s\n" RESET, MAGENTA, R_V, num, text, desc ? desc : "");
 }
 
-/* Feedback messages */
-void showSuccess(const char *message)
-{
-printf("\n" GREEN BOLD "  [SUCCESS] " RESET "%s\n", message);
+void displayMainMenu(void){
+    drawHeader("MAIN MENU");
+    printf("%s%s\n" RESET, MAGENTA, R_V);
+    drawMenuItem(1, "Customer Login", "");
+    drawMenuItem(2, "Customer Registration", "");
+    drawMenuItem(3, "View Products", "Guest");
+    drawMenuItem(4, "Instructions", "");
+    drawMenuItem(5, "About Us", "");
+    printf("%s%s\n" RESET, MAGENTA, R_V);
+    printf("%s%s  %s99. Admin Login\n" RESET, MAGENTA, R_V, DIM);
+    printf("%s%s  %s0. Exit\n" RESET, MAGENTA, R_V, DIM);
+    printf("%s%s\n" RESET, MAGENTA, R_V);
+    drawFooter();
 }
 
-void showError(const char *message)
-{
-printf("\n" RED BOLD "  [ERROR] " RESET "%s\n", message);
+void displayAdminMenu(void){
+    clearScreen();
+    drawHeader("ADMIN PANEL");
+    printf("%s%s\n" RESET, MAGENTA, R_V);
+    drawMenuItem(1, "Add Product", "");
+    drawMenuItem(2, "Update Product", "");
+    drawMenuItem(3, "Delete Product", "");
+    drawMenuItem(4, "User Management", "");
+    drawMenuItem(5, "Update Order Status", "");
+    drawMenuItem(6, "Dashboard", "");
+    drawMenuItem(7, "Logout", "");
+    printf("%s%s\n" RESET, MAGENTA, R_V);
+    drawFooter();
 }
 
-void showWarning(const char *message)
-{
-printf("\n" YELLOW BOLD "  [WARNING] " RESET "%s\n", message);
+void displayCustomerMenu(const char* username){
+    clearScreen();
+    char title[80];
+    snprintf(title, sizeof(title), "WELCOME %s", username);
+    drawHeader(title);
+    printf("%s%s\n" RESET, MAGENTA, R_V);
+    drawMenuItem(1, "View Products & Buy", "");
+    drawMenuItem(2, "Search Product", "");
+    drawMenuItem(3, "My Cart", "");
+    drawMenuItem(4, "My Orders", "");
+    drawMenuItem(5, "Logout", "");
+    printf("%s%s\n" RESET, MAGENTA, R_V);
+    drawFooter();
 }
 
-/* Pause before returning to a menu */
-void pressEnterToContinue(void)
+void showSuccess(const char* msg){ printf("\n" GREEN "  [SUCCESS] %s\n" RESET, msg); }
+void showError(const char* msg){ printf("\n" RED "  [ERROR] %s\n" RESET, msg); }
+void showWarning(const char* msg){ printf("\n" YELLOW "  [WARNING] %s\n" RESET, msg); }
+
+void pressEnterToContinue(void){
+    printf(DIM "\n  Press Enter to continue..." RESET);
+    int c;
+    while((c = getchar()) != '\n' && c != EOF);
+    getchar();
+}
+#define TABLE_COL_WIDTH 14
+
+void printTableHeader(int columns, ...)
 {
-char buffer[8];
+    va_list args;
+    va_start(args, columns);
 
+    printf("\n" MAGENTA "  ");
 
-printf("\n" DIM "  Press Enter to continue..." RESET);
-fflush(stdout);
-
-if (fgets(buffer, sizeof(buffer), stdin) != NULL)
-{
-    if (strchr(buffer, '\n') == NULL)
+    for (int i = 0; i < columns; i++)
     {
-        int ch;
+        const char *heading = va_arg(args, const char *);
 
-        while ((ch = getchar()) != '\n' && ch != EOF)
-            ;
+        printf(BOLD WHITE "%-*.*s" RESET MAGENTA,
+               TABLE_COL_WIDTH,
+               TABLE_COL_WIDTH,
+               heading ? heading : "");
+
+        if (i < columns - 1)
+            printf(" | ");
     }
+
+    printf("\n");
+
+    va_end(args);
 }
 
-
-}
-
-/* Main menu */
-void displayMainMenu(void)
+void printTableDivider(int columns)
 {
-clearScreen();
-drawHeader("MAIN MENU");
+    printf(MAGENTA "  ");
 
+    for (int i = 0; i < columns; i++)
+    {
+        for (int j = 0; j < TABLE_COL_WIDTH; j++)
+            printf("─");
 
-drawMenuItem(1, "Login", "Access account");
-drawMenuItem(2, "Registration", "Create account");
-drawMenuItem(3, "View Products", "Browse catalog");
-drawMenuItem(4, "Instructions", "Help");
-drawMenuItem(5, "About Us", "Application info");
-drawMenuItem(99, "Administration", "Admin access");
-drawMenuItem(0, "Exit", "Close application");
+        if (i < columns - 1)
+            printf("─┼─");
+    }
 
-drawFooter();
-
-
+    printf("\n" RESET);
 }
 
-/* Customer menu */
-void displayCustomerMenu(void)
+void printTableRow(int columns, ...)
 {
-clearScreen();
-drawHeader("CUSTOMER DASHBOARD");
+    va_list args;
+    va_start(args, columns);
 
+    printf("  ");
 
-drawMenuItem(1, "View Products", "Browse catalog");
-drawMenuItem(2, "Search Products", "Find products");
-drawMenuItem(3, "My Cart", "Manage cart");
-drawMenuItem(4, "My Orders", "Order history");
-drawMenuItem(5, "Logout", "End session");
+    for (int i = 0; i < columns; i++)
+    {
+        const char *value = va_arg(args, const char *);
 
-drawFooter();
+        printf(WHITE "%-*.*s" RESET,
+               TABLE_COL_WIDTH,
+               TABLE_COL_WIDTH,
+               value ? value : "");
 
+        if (i < columns - 1)
+            printf(" | ");
+    }
 
+    printf("\n");
+
+    va_end(args);
 }
 
-/* Admin menu */
-void displayAdminMenu(void)
+void showInfo(const char *msg)
 {
-clearScreen();
-drawHeader("ADMIN DASHBOARD");
-
-
-drawMenuItem(1, "Add Product", "Create product");
-drawMenuItem(2, "Update Product", "Edit details");
-drawMenuItem(3, "Delete Product", "Remove product");
-drawMenuItem(4, "View Users", "User management");
-drawMenuItem(5, "Manage Orders", "Order status");
-drawMenuItem(6, "Dashboard", "System overview");
-drawMenuItem(7, "Logout", "End session");
-
-drawFooter();
-
-
+    printf("\n" CYAN "  [INFO] %s\n" RESET, msg);
 }
