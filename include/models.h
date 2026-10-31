@@ -40,8 +40,8 @@ typedef struct {
     char email[MAX_EMAIL];
     char tpNumber[MAX_tpNumber];
     char address[MAX_Adress];
-    UserRole role;
-    int isActive; 
+    UserRole role;//role eka 1 kiyanne admin 0 kiyanne user 
+    int isActive;
 } User;
 
 

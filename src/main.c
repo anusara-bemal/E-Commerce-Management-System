@@ -187,6 +187,9 @@ void adminLogin(void)
                 case 3:
                     deleteProduct();
                     break;
+                case 4:
+                    manageUsers();
+                    break;
                 case 5:
                     updateOrderStatus();
                     break;

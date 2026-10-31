@@ -2,5 +2,6 @@
 #define ADMIN_H
 
 void showReports(void);
+void manageUsers(void); 
 
 #endif
