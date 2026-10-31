@@ -147,7 +147,6 @@ void customerRegistration(void)
     printf("\nPress Enter to go back...");
     getchar();
 }
-
 void adminLogin(void)
 {
     char user[50];
@@ -169,17 +168,14 @@ void adminLogin(void)
                 printf("\nEnter choice: ");
                 if (scanf("%d", &adminChoice) != 1)
                 {
-                    while (getchar() != '\n')
-                        ;
+                    while (getchar() != '\n');
                     continue;
                 }
-                while (getchar() != '\n')
-                    ;
+                while (getchar() != '\n');
 
                 if (adminChoice == 7 || adminChoice == 0)
                     break;
 
-                // Call product admin functions
                 switch (adminChoice)
                 {
                 case 1:
@@ -191,9 +187,11 @@ void adminLogin(void)
                 case 3:
                     deleteProduct();
                     break;
-                // case 4:  break; //create view all users
                 case 5:
                     updateOrderStatus();
+                    break;
+                case 6:
+                    showReports(); 
                     break;
                 case 7:
                     logout(user);
@@ -207,7 +205,6 @@ void adminLogin(void)
         }
     }
 }
-
 void showInstructions(void)
 {
     clearScreen();
