@@ -1,0 +1,133 @@
+========================================================
+  E-COMMERCE MANAGEMENT SYSTEM - HOW TO RUN
+========================================================
+
+IMPORTANT
+---------
+Run the program from the PROJECT ROOT folder (the folder that
+contains the "src", "include" and "data" folders).
+The program reads files such as data/users.txt using relative
+paths, so it will not work if it is started from another folder.
+
+
+--------------------------------------------------------
+OPTION 1: RUN THE READY-MADE PROGRAM (WINDOWS)
+--------------------------------------------------------
+1. Open the project folder.
+2. Open Command Prompt or Windows Terminal in this folder.
+   (Tip: click the File Explorer address bar, type "cmd"
+   and press Enter.)
+3. Run:
+
+       .\ecommerce.exe
+
+Windows Terminal is recommended for correct colours and
+box characters.
+
+
+--------------------------------------------------------
+OPTION 2: COMPILE AND RUN ON WINDOWS (GCC installed)
+--------------------------------------------------------
+Check that GCC is available:
+
+       gcc --version
+
+Compile (one command, all on one line):
+
+       gcc -Wall -Iinclude src/main.c src/users.c src/products.c src/cart.c src/orders.c src/admin.c src/input.c src/ui.c -o ecommerce.exe
+
+Run:
+
+       .\ecommerce.exe
+
+To include the program icon, build the icon resource first
+and add icon.o to the compile command:
+
+       windres icon.rc -O coff -o icon.o
+       gcc -Wall -Iinclude src/main.c src/users.c src/products.c src/cart.c src/orders.c src/admin.c src/input.c src/ui.c icon.o -o ecommerce.exe
+
+
+--------------------------------------------------------
+OPTION 3: BUILD A WINDOWS .EXE FROM LINUX / WSL
+--------------------------------------------------------
+Install the cross compiler (once):
+
+       sudo apt update
+       sudo apt install mingw-w64
+
+Build the icon resource and the program:
+
+       x86_64-w64-mingw32-windres icon.rc -O coff -o icon.o
+       x86_64-w64-mingw32-gcc -static -Wall -Iinclude src/main.c src/users.c src/products.c src/cart.c src/orders.c src/admin.c src/input.c src/ui.c icon.o -o ecommerce.exe
+
+The -static option lets the .exe run on other Windows PCs
+without extra DLL files.
+
+If you get "Permission denied" while compiling, ecommerce.exe
+is still running on Windows. Close it and compile again.
+
+
+--------------------------------------------------------
+OPTION 4: COMPILE AND RUN ON LINUX
+--------------------------------------------------------
+Compile:
+
+       gcc -Wall -Iinclude src/main.c src/users.c src/products.c src/cart.c src/orders.c src/admin.c src/input.c src/ui.c -o ecommerce
+
+Run:
+
+       ./ecommerce
+
+Note: a Windows .exe cannot run on normal Linux.
+
+
+--------------------------------------------------------
+USING THE PROGRAM
+--------------------------------------------------------
+Main menu:
+
+   1.  Customer Login
+   2.  Customer Registration
+   3.  View Products (Guest)
+   4.  Instructions
+   5.  About Us
+   99. Admin Login
+   0.  Exit
+
+Customer:
+   1. Choose 2 to register, then 1 to log in.
+   2. View Products & Buy, or Search Product.
+   3. My Cart: review items, then checkout.
+   4. Choose delivery method (Standard / Express) and
+      Cash on Delivery, then confirm the order.
+   5. The invoice is saved in data/invoices/.
+   6. My Orders shows your order history.
+
+Admin:
+   Choose 99 at the main menu and log in with an admin account.
+   Default admin account:
+       Username : admin
+       Password : 1234
+   (Update this if the data files are changed.)
+
+
+--------------------------------------------------------
+TROUBLESHOOTING
+--------------------------------------------------------
+* Strange characters instead of boxes/colours
+    Run in Windows Terminal, or type "chcp 65001" before
+    running the program in an old Command Prompt window.
+
+* "Cannot open file" / products or users not found
+    You are not in the project root folder. Go to the folder
+    that contains "data", "src" and "include", then run again.
+
+* "undefined reference" errors when compiling
+    One of the .c files is missing from the compile command.
+    Use the full command shown above (all 8 files in src/).
+
+* "gcc is not recognized"
+    GCC is not installed or not in PATH. Install MinGW-w64 or
+    MSYS2 and add its "bin" folder to the Windows PATH.
+
+========================================================
